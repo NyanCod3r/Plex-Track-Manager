@@ -1,7 +1,6 @@
 .idea
 .cache*
 venv
-Plexify/
 Pipfile*
 VERSION
 *.json
