@@ -66,10 +66,10 @@ def main():
 
     logging.info("Connected to Last.fm.")
 
-    seconds_to_wait = int(os.environ.get("SECONDS_TO_WAIT", 3600))
-    max_discover_tracks = int(os.environ.get("MAX_DISCOVER_TRACKS", 20))
-    max_radar_tracks = int(os.environ.get("MAX_RADAR_TRACKS", 20))
-    radar_days_back = int(os.environ.get("RADAR_DAYS_BACK", 30))
+    seconds_to_wait = int(os.environ.get("SECONDS_TO_WAIT", "") or 3600)
+    max_discover_tracks = int(os.environ.get("MAX_DISCOVER_TRACKS", "") or 20)
+    max_radar_tracks = int(os.environ.get("MAX_RADAR_TRACKS", "") or 20)
+    radar_days_back = int(os.environ.get("RADAR_DAYS_BACK", "") or 30)
 
     while True:
         try:

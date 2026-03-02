@@ -74,7 +74,7 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
 
     if download_queue:
         logging.info(f"Downloading {len(download_queue)} missing tracks...")
-        download_delay = float(os.environ.get("DOWNLOAD_DELAY", "0.1"))
+        download_delay = float(os.environ.get("DOWNLOAD_DELAY", "") or "0.1")
         for idx, (output_folder, track_name, artist_name, expected_filepath) in enumerate(download_queue, 1):
             download_track(output_folder, track_name, artist_name, expected_filepath)
             if idx < len(download_queue):
