@@ -1,0 +1,12 @@
+.idea
+.cache*
+venv
+Plexify/
+Pipfile*
+VERSION
+*.json
+*pycache*
+*.bak
+CHANGELOG.md
+*.log
+
