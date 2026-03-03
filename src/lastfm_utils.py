@@ -44,7 +44,7 @@ def get_lastfm_network(api_key, api_secret, username, password):
         network.get_user(username)
         return network
     except Exception as e:
-        logging.error(f"Failed to connect to Last.fm: {e}")
+        logging.error(f"\U0000274C [LASTFM] Failed to connect to Last.fm: {e}")
         return None
 
 
@@ -74,7 +74,7 @@ def sync_plex_to_lastfm(plex, network):
 
     music_sections = [s for s in plex.library.sections() if s.type == "artist"]
     if not music_sections:
-        logging.warning("No music libraries found in Plex")
+        logging.warning("\U000026A0\uFE0F  [SYNC] No music libraries found in Plex")
         return
 
     loved_hashes = set(state.get("loved_hashes", []))
@@ -94,18 +94,18 @@ def sync_plex_to_lastfm(plex, network):
                     lastfm_track.love()
                     loved_hashes.add(track_hash)
                     loved_count += 1
-                    logging.debug(f"Loved on Last.fm: {artist_title} - {track.title}")
+                    logging.debug(f"\U00002764\uFE0F  [SYNC] Loved on Last.fm: {artist_title} - {track.title}")
                 except Exception as e:
-                    logging.debug(f"Could not love track: {e}")
+                    logging.debug(f"\U0000274C [SYNC] Could not love track: {e}")
         except Exception as e:
-            logging.warning(f"Error reading library '{section.title}': {e}")
+            logging.warning(f"\U000026A0\uFE0F  [SYNC] Error reading library '{section.title}': {e}")
 
     state["loved_hashes"] = list(loved_hashes)
 
     if loved_count:
-        logging.info(f"Synced {loved_count} loved tracks to Last.fm")
+        logging.info(f"\U00002764\uFE0F  [SYNC] Pushed {loved_count} loved tracks to Last.fm")
     else:
-        logging.info("No new loved tracks to sync")
+        logging.info("\U00002764\uFE0F  [SYNC] No new loved tracks to sync")
 
     scrobble_count = 0
     last_ts = state.get("last_scrobble_timestamp", int(time.time()))
@@ -123,12 +123,12 @@ def sync_plex_to_lastfm(plex, network):
                 scrobble_count += 1
                 state["last_scrobble_timestamp"] = max(state.get("last_scrobble_timestamp", 0), ts)
             except Exception as e:
-                logging.debug(f"Could not scrobble: {e}")
+                logging.debug(f"\U0000274C [SYNC] Could not scrobble: {e}")
     except Exception as e:
-        logging.warning(f"Error reading Plex history: {e}")
+        logging.warning(f"\U000026A0\uFE0F  [SYNC] Error reading Plex history: {e}")
 
     if scrobble_count:
-        logging.info(f"Scrobbled {scrobble_count} tracks to Last.fm")
+        logging.info(f"\U0001F504 [SYNC] Scrobbled {scrobble_count} tracks to Last.fm")
 
     _save_sync_state(state)
 
@@ -147,11 +147,11 @@ def generate_discover_weekly(network, max_tracks=20):
     try:
         top_artists = user.get_top_artists(period=pylast.PERIOD_3MONTHS, limit=30)
     except Exception as e:
-        logging.error(f"Failed to get top artists from Last.fm: {e}")
+        logging.error(f"\U0000274C [DISCOVER WEEKLY] Failed to get top artists from Last.fm: {e}")
         return []
 
     known_artists = {item.item.name.lower() for item in top_artists}
-    logging.info(f"User has {len(known_artists)} known artists (last 3 months)")
+    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] User has {len(known_artists)} known artists (last 3 months)")
 
     similar_artists = set()
     for item in top_artists[:15]:
@@ -161,10 +161,10 @@ def generate_discover_weekly(network, max_tracks=20):
                 if name.lower() not in known_artists:
                     similar_artists.add(name)
         except Exception as e:
-            logging.debug(f"Could not get similar artists for {item.item.name}: {e}")
+            logging.debug(f"\U0000274C [DISCOVER WEEKLY] Could not get similar artists for {item.item.name}: {e}")
         time.sleep(0.25)
 
-    logging.info(f"Found {len(similar_artists)} new similar artists")
+    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] Found {len(similar_artists)} new similar artists")
 
     tracks = []
     for artist_name in list(similar_artists)[:30]:
@@ -181,10 +181,10 @@ def generate_discover_weekly(network, max_tracks=20):
                 if len(tracks) >= max_tracks:
                     break
         except Exception as e:
-            logging.debug(f"Could not get tracks for {artist_name}: {e}")
+            logging.debug(f"\U0000274C [DISCOVER WEEKLY] Could not get tracks for {artist_name}: {e}")
         time.sleep(0.25)
 
-    logging.info(f"Generated Discover Weekly with {len(tracks)} tracks")
+    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] Generated playlist with {len(tracks)} tracks")
     return tracks[:max_tracks]
 
 
@@ -203,7 +203,7 @@ def generate_release_radar(network, max_tracks=20, days_back=30):
     try:
         top_artists = user.get_top_artists(period=pylast.PERIOD_6MONTHS, limit=50)
     except Exception as e:
-        logging.error(f"Failed to get top artists from Last.fm: {e}")
+        logging.error(f"\U0000274C [RELEASE RADAR] Failed to get top artists from Last.fm: {e}")
         return []
 
     artist_names = [item.item.name for item in top_artists]
@@ -216,7 +216,7 @@ def generate_release_radar(network, max_tracks=20, days_back=30):
     except Exception:
         pass
 
-    logging.info(f"Checking {len(artist_names)} artists for new releases")
+    logging.info(f"\U0001F4E1 [RELEASE RADAR] Checking {len(artist_names)} artists for new releases")
 
     cutoff = datetime.now() - timedelta(days=days_back)
     tracks = []
@@ -274,7 +274,7 @@ def generate_release_radar(network, max_tracks=20, days_back=30):
                             if len(tracks) >= max_tracks:
                                 break
                 except Exception as e:
-                    logging.debug(f"Could not get release tracks: {e}")
+                    logging.debug(f"\U0000274C [RELEASE RADAR] Could not get release tracks: {e}")
 
                 time.sleep(1)  # MusicBrainz rate limit
                 if len(tracks) >= max_tracks:
@@ -282,8 +282,8 @@ def generate_release_radar(network, max_tracks=20, days_back=30):
 
             time.sleep(1)
         except Exception as e:
-            logging.debug(f"Could not check releases for {artist_name}: {e}")
+            logging.debug(f"\U0000274C [RELEASE RADAR] Could not check releases for {artist_name}: {e}")
             time.sleep(1)
 
-    logging.info(f"Generated Release Radar with {len(tracks)} tracks")
+    logging.info(f"\U0001F4E1 [RELEASE RADAR] Generated playlist with {len(tracks)} tracks")
     return tracks[:max_tracks]

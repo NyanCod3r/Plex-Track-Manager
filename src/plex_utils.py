@@ -35,10 +35,10 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     File structure: MUSIC_PATH/<Playlist>/<Artist>/<Album>/<Artist - Track>.flac|mp3
     """
     if not music_path:
-        logging.error("MUSIC_PATH not specified.")
+        logging.error("\U0000274C [DOWNLOAD] MUSIC_PATH not specified.")
         return
 
-    logging.info(f"Ensuring local files for playlist: {playlist_name}")
+    logging.info(f"\U0001F4C2 [{playlist_name}] Checking local files for {len(tracks)} tracks...")
 
     download_queue = []
     safe_playlist = sanitizeFilename(playlist_name)
@@ -61,27 +61,27 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
         expected_filename = f"{safe_artist} - {safe_track}.{file_ext}"
         expected_filepath = os.path.join(album_folder, expected_filename)
 
-        logging.info(f"Checking for track '{safe_track}' in path: '{album_folder}'")
-
         if track_exists_in_directory(album_folder, safe_track):
+            logging.debug(f"\U00002705 [{playlist_name}] Already exists: '{safe_artist} - {safe_track}'")
             continue
 
         if find_and_rename_track_by_tag(album_folder, artist_name, track_name, expected_filepath):
+            logging.debug(f"\U0001F504 [{playlist_name}] Found by metadata, renamed: '{safe_artist} - {safe_track}'")
             continue
 
-        logging.warning(f"Track not found locally. Queuing: '{safe_artist} - {safe_track}'")
+        logging.info(f"\U00002B07\uFE0F  [{playlist_name}] Missing track, queued for download: '{safe_artist} - {safe_track}'")
         download_queue.append((album_folder, track_name, artist_name, expected_filepath))
 
     if download_queue:
-        logging.info(f"Downloading {len(download_queue)} missing tracks...")
+        logging.info(f"\U0001F4E5 [{playlist_name}] Downloading {len(download_queue)} missing tracks...")
         download_delay = float(os.environ.get("DOWNLOAD_DELAY", "") or "0.1")
         for idx, (output_folder, track_name, artist_name, expected_filepath) in enumerate(download_queue, 1):
-            download_track(output_folder, track_name, artist_name, expected_filepath)
+            download_track(output_folder, track_name, artist_name, expected_filepath, playlist_name)
             if idx < len(download_queue):
                 time.sleep(download_delay)
-        logging.info(f"Completed downloading {len(download_queue)} tracks")
+        logging.info(f"\U00002705 [{playlist_name}] Download batch complete ({len(download_queue)} tracks processed)")
     else:
-        logging.info(f"All tracks already present for playlist: {playlist_name}")
+        logging.info(f"\U00002705 [{playlist_name}] All {len(tracks)} tracks already present")
 
 
 def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]:
@@ -90,7 +90,7 @@ def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]
     Uses an in-memory cache to avoid duplicate queries.
     """
     if not artist_name or not track_name:
-        logging.error(f"Invalid input: artist_name='{artist_name}', track_name='{track_name}'")
+        logging.error(f"\U0000274C [YOUTUBE] Invalid input: artist_name='{artist_name}', track_name='{track_name}'")
         return None
 
     safe_artist = str(artist_name).strip()
@@ -100,10 +100,10 @@ def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]
     if search_query in youtube_url_cache:
         cached = youtube_url_cache[search_query]
         if cached:
-            logging.info(f"Found YouTube URL in cache for: '{search_query}'")
+            logging.info(f"\U0001F4BE [YOUTUBE] Cache hit for '{search_query}'")
         return cached
 
-    logging.info(f"Searching YouTube for: '{search_query}'")
+    logging.info(f"\U0001F50D [YOUTUBE] Searching for '{search_query}'...")
 
     try:
         search_cmd = [sys.executable, "-m", "yt_dlp", "--get-id", "--no-playlist", f"ytsearch5:{search_query}"]
@@ -113,11 +113,11 @@ def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]
             video_ids = proc.stdout.strip().split("\n")
             if video_ids and video_ids[0]:
                 url = f"https://www.youtube.com/watch?v={video_ids[0]}"
-                logging.info(f"Found YouTube URL via yt-dlp search: {url}")
+                logging.info(f"\U00002705 [YOUTUBE] Found via yt-dlp: {url}")
                 youtube_url_cache[search_query] = url
                 return url
 
-        logging.info("yt-dlp search failed, trying YoutubeSearchPython...")
+        logging.info("\U0001F504 [YOUTUBE] yt-dlp search failed, trying YoutubeSearchPython...")
         videos_search = VideosSearch(safe_artist + " " + safe_track, limit=5)
         search_result = videos_search.result()
         if not search_result or not isinstance(search_result, dict):
@@ -128,24 +128,24 @@ def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]
         for video in results:
             if video and isinstance(video, dict) and video.get("link"):
                 url = video["link"]
-                logging.info(f"Using first available result: {url}")
+                logging.info(f"\U00002705 [YOUTUBE] Found via YoutubeSearchPython: {url}")
                 youtube_url_cache[search_query] = url
                 return url
 
-        logging.warning(f"No YouTube results found for '{search_query}'")
+        logging.warning(f"\U0000274C [YOUTUBE] No results found for '{search_query}'")
         youtube_url_cache[search_query] = None
         return None
 
     except subprocess.TimeoutExpired:
-        logging.error(f"YouTube search timeout for '{search_query}'")
+        logging.error(f"\U0000274C [YOUTUBE] Search timeout for '{search_query}'")
         youtube_url_cache[search_query] = None
         return None
     except TypeError as e:
-        logging.error(f"Type error in YouTube library for '{search_query}': {e}")
+        logging.error(f"\U0000274C [YOUTUBE] Type error for '{search_query}': {e}")
         youtube_url_cache[search_query] = None
         return None
     except Exception as e:
-        logging.error(f"General error searching YouTube for '{search_query}': {e}")
+        logging.error(f"\U0000274C [YOUTUBE] Search error for '{search_query}': {e}")
         youtube_url_cache[search_query] = None
         return None
 
@@ -230,7 +230,7 @@ def find_and_rename_track_by_tag(folder: str, artist_name: str, track_title: str
     return False
 
 
-def download_track(output_folder: str, track_name: str, artist_name: str, expected_filepath: str):
+def download_track(output_folder: str, track_name: str, artist_name: str, expected_filepath: str, playlist_name: str = "Unknown"):
     """
     Download a single track using YouTube search + yt-dlp.
     Format is determined by PREFER_FLAC (default: true).
@@ -243,11 +243,11 @@ def download_track(output_folder: str, track_name: str, artist_name: str, expect
     if os.path.exists(output_folder):
         files_before = set(os.listdir(output_folder))
 
-    logging.info(f"Using YouTube search for '{artist_name} - {track_name}'")
+    logging.info(f"\U0001F50D [{playlist_name}] Searching YouTube for '{artist_name} - {track_name}'...")
 
     youtube_url = search_youtube_for_track(artist_name, track_name)
     if not youtube_url:
-        logging.error(f"No YouTube URL found for '{artist_name} - {track_name}'")
+        logging.error(f"\U0000274C [{playlist_name}] No YouTube result for '{artist_name} - {track_name}'")
         track_download_failure()
         return False
 
@@ -265,7 +265,7 @@ def download_track(output_folder: str, track_name: str, artist_name: str, expect
         cmd = _build_ytdlp_cmd(fmt, audio_format, output_path, ytdlp_log_level)
         cmd.append(youtube_url)
 
-        logging.info(f"Downloading via yt-dlp: {youtube_url}")
+        logging.info(f"\U0001F4E5 [{playlist_name}] Downloading '{artist_name} - {track_name}'...")
         capture = ytdlp_log_level != "DEBUG"
         proc = subprocess.run(cmd, capture_output=capture, text=True, timeout=300)
 
@@ -273,12 +273,12 @@ def download_track(output_folder: str, track_name: str, artist_name: str, expect
             new_audio = _check_new_audio_files(output_folder, files_before)
             if new_audio:
                 for f in new_audio:
-                    logging.info(f"Successfully downloaded: {f}")
+                    logging.info(f"\U00002705 [{playlist_name}] Downloaded: {f}")
                 track_download_success()
                 return True
 
         if prefer_flac:
-            logging.info(f"FLAC download failed, trying MP3 fallback for '{artist_name} - {track_name}'")
+            logging.info(f"\U0001F504 [{playlist_name}] FLAC failed, trying MP3 fallback for '{artist_name} - {track_name}'...")
             cmd_mp3 = _build_ytdlp_cmd(
                 "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best[height<=480]",
                 "mp3", output_path, ytdlp_log_level
@@ -289,16 +289,16 @@ def download_track(output_folder: str, track_name: str, artist_name: str, expect
                 new_audio = _check_new_audio_files(output_folder, files_before)
                 if new_audio:
                     for f in new_audio:
-                        logging.info(f"Downloaded MP3 fallback: {f}")
+                        logging.info(f"\U00002705 [{playlist_name}] Downloaded (MP3 fallback): {f}")
                     track_download_success()
                     return True
 
     except subprocess.TimeoutExpired:
-        logging.error(f"yt-dlp timeout for {artist_name} - {track_name}")
+        logging.error(f"\U0000274C [{playlist_name}] Download timeout for '{artist_name} - {track_name}'")
     except Exception as e:
-        logging.error(f"yt-dlp error: {e}")
+        logging.error(f"\U0000274C [{playlist_name}] Download error for '{artist_name} - {track_name}': {e}")
 
-    logging.error(f"All download methods failed for '{artist_name} - {track_name}'")
+    logging.error(f"\U0000274C [{playlist_name}] All download methods failed for '{artist_name} - {track_name}'")
     track_download_failure()
     return False
 
@@ -352,7 +352,7 @@ def get_one_star_tracks(plex: PlexServer, library_name: str) -> List[Dict]:
     """
     Retrieve all tracks from a Plex library section that have a 1-star rating.
     """
-    logging.info(f"Fetching 1-star rated tracks from Plex library: {library_name}...")
+    logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Scanning library '{library_name}' for 1-star tracks...")
     one_star_tracks = []
     try:
         music_library = plex.library.section(library_name)
@@ -363,9 +363,9 @@ def get_one_star_tracks(plex: PlexServer, library_name: str) -> List[Dict]:
                     "title": track.title,
                     "artist": track.artist().title if track.artist() else "Unknown",
                 })
-        logging.info(f"Found {len(one_star_tracks)} tracks with 1-star rating in {library_name}.")
+        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Found {len(one_star_tracks)} 1-star tracks in '{library_name}'")
     except Exception as e:
-        logging.error(f"Error fetching 1-star tracks from library '{library_name}': {e}")
+        logging.error(f"\U0000274C [CLEANUP] Error scanning library '{library_name}': {e}")
     return one_star_tracks
 
 
@@ -376,10 +376,10 @@ def delete_plex_track(track, playlist_name: str = "Unknown"):
     track_title = track.title
     try:
         track.delete()
-        logging.info(f"Deleted from Plex library: {track_title}")
+        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Deleted from Plex: '{track_title}'")
         track_deletion_success()
     except Exception as e:
-        logging.error(f"Failed to delete from Plex library: {track_title} - {e}")
+        logging.error(f"\U0000274C [CLEANUP] Failed to delete '{track_title}': {e}")
         track_deletion_failure()
 
 
@@ -420,15 +420,16 @@ def track_deletion_failure():
 
 
 def print_sync_recap():
-    print("\n" + "=" * 60)
-    print("SYNC CYCLE RECAP")
-    print("=" * 60)
-    print(f"Downloads Attempted: {download_stats['downloads_attempted']}")
-    print(f"Downloads Successful: {download_stats['downloads_successful']}")
-    print(f"Downloads Failed: {download_stats['downloads_failed']}")
-    print(f"Tracks Deleted: {download_stats['tracks_deleted']}")
-    print(f"Delete Failures: {download_stats['delete_failures']}")
+    print("")
+    print("\U0001F4CA" + " " + "=" * 50)
+    print("\U0001F4CA  SYNC CYCLE RECAP")
+    print("\U0001F4CA" + " " + "=" * 50)
+    print(f"  \U0001F4E5 Downloads Attempted:  {download_stats['downloads_attempted']}")
+    print(f"  \U00002705 Downloads Successful: {download_stats['downloads_successful']}")
+    print(f"  \U0000274C Downloads Failed:     {download_stats['downloads_failed']}")
+    print(f"  \U0001F5D1\uFE0F  Tracks Deleted:       {download_stats['tracks_deleted']}")
+    print(f"  \U0000274C Delete Failures:      {download_stats['delete_failures']}")
     if download_stats["downloads_attempted"] > 0:
         rate = (download_stats["downloads_successful"] / download_stats["downloads_attempted"]) * 100
-        print(f"Success Rate: {rate:.1f}%")
-    print("=" * 60 + "\n")
+        print(f"  \U0001F3AF Success Rate:         {rate:.1f}%")
+    print("\U0001F4CA" + " " + "=" * 50 + "\n")

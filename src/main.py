@@ -26,13 +26,31 @@ from plex_utils import (
     ensure_local_files,
 )
 
+VERSION = "4.0.0"
+
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
     format="%(asctime)s %(levelname)s: %(message)s",
     level=log_level,
 )
 
-logging.info("Starting Plex-Track-Manager...")
+BANNER = f"""
+ ____  _            _____             _
+|  _ \\| | _____  __/_   _| __ __ _ __| | __
+| |_) | |/ _ \\ \\/ /  | || '__/ _` / __| |/ /
+|  __/| |  __/>  <   | || | | (_| \\__ \\   <
+|_|   |_|\\___/_/\\_\\  |_||_|  \\__,_|___/_|\\_\\
+  __  __
+ |  \\/  | __ _ _ __   __ _  __ _  ___ _ __
+ | |\\/| |/ _` | '_ \\ / _` |/ _` |/ _ \\ '__|
+ | |  | | (_| | | | | (_| | (_| |  __/ |
+ |_|  |_|\\__,_|_| |_|\\__,_|\\__, |\\___|_|
+                            |___/
+                                    v{VERSION}
+"""
+
+print(BANNER)
+logging.info(f"Starting Plex-Track-Manager v{VERSION}...")
 
 
 def main():
@@ -41,11 +59,11 @@ def main():
     music_path = os.environ.get("MUSIC_PATH", "/music")
 
     if not plex_url or not plex_token:
-        logging.error("PLEX_URL and PLEX_TOKEN must be set. Exiting.")
+        logging.error("[PLEX] PLEX_URL and PLEX_TOKEN must be set. Exiting.")
         return
 
     plex = PlexServer(plex_url, plex_token)
-    logging.info("Connected to Plex.")
+    logging.info("[PLEX] Connected to Plex server.")
 
     lastfm_api_key = os.environ.get("LASTFM_API_KEY")
     lastfm_api_secret = os.environ.get("LASTFM_API_SECRET")
@@ -54,17 +72,17 @@ def main():
 
     if not all([lastfm_api_key, lastfm_api_secret, lastfm_username, lastfm_password]):
         logging.error(
-            "Last.fm credentials not set. "
+            "[LASTFM] Last.fm credentials not set. "
             "Need LASTFM_API_KEY, LASTFM_API_SECRET, LASTFM_USERNAME, LASTFM_PASSWORD. Exiting."
         )
         return
 
     network = get_lastfm_network(lastfm_api_key, lastfm_api_secret, lastfm_username, lastfm_password)
     if not network:
-        logging.error("Failed to connect to Last.fm. Exiting.")
+        logging.error("[LASTFM] Failed to connect to Last.fm. Exiting.")
         return
 
-    logging.info("Connected to Last.fm.")
+    logging.info("[LASTFM] Connected to Last.fm.")
 
     seconds_to_wait = int(os.environ.get("SECONDS_TO_WAIT", "") or 3600)
     max_discover_tracks = int(os.environ.get("MAX_DISCOVER_TRACKS", "") or 20)
@@ -75,15 +93,15 @@ def main():
         try:
             reset_stats()
 
-            logging.info("Syncing Plex data to Last.fm...")
+            logging.info("\U0001F504 [SYNC] Syncing Plex listening data to Last.fm...")
             sync_plex_to_lastfm(plex, network)
 
-            logging.info("Generating Discover Weekly...")
+            logging.info("\U0001F3B5 [DISCOVER WEEKLY] Generating playlist...")
             discover_tracks = generate_discover_weekly(network, max_tracks=max_discover_tracks)
             if discover_tracks:
                 ensure_local_files(discover_tracks, "Discover Weekly", music_path)
 
-            logging.info("Generating Release Radar...")
+            logging.info("\U0001F4E1 [RELEASE RADAR] Generating playlist...")
             radar_tracks = generate_release_radar(network, max_tracks=max_radar_tracks, days_back=radar_days_back)
             if radar_tracks:
                 ensure_local_files(radar_tracks, "Release Radar", music_path)
@@ -92,13 +110,13 @@ def main():
 
             print_sync_recap()
 
-            logging.info(f"Waiting {seconds_to_wait} seconds before next sync...")
+            logging.info(f"\U000023F3 [SLEEP] Waiting {seconds_to_wait}s before next sync cycle...")
             time.sleep(seconds_to_wait)
         except KeyboardInterrupt:
-            logging.info("Shutting down Plex-Track-Manager.")
+            logging.info("\U0001F44B [SHUTDOWN] Plex-Track-Manager stopped by user.")
             break
         except Exception as e:
-            logging.error(f"Error in main loop: {e}")
+            logging.error(f"\U0001F4A5 [ERROR] Unexpected error in main loop: {e}")
             time.sleep(60)
 
 
@@ -107,7 +125,7 @@ def process_one_star_deletions(plex):
     Scan all Plex music libraries for 1-star rated tracks and delete them
     from the Plex library and the filesystem.
     """
-    logging.info("Checking for 1-star rated tracks...")
+    logging.info("\U0001F5D1\uFE0F  [CLEANUP] Scanning for 1-star rated tracks...")
 
     music_sections = [s for s in plex.library.sections() if s.type == "artist"]
     total_deleted = 0
@@ -117,17 +135,17 @@ def process_one_star_deletions(plex):
         if not one_star:
             continue
 
-        logging.info(f"Found {len(one_star)} 1-star tracks in '{section.title}'")
+        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Found {len(one_star)} 1-star tracks in library '{section.title}'")
 
         for track_info in one_star:
             try:
                 delete_plex_track(track_info["plex_track"], section.title)
                 total_deleted += 1
             except Exception as e:
-                logging.error(f"Failed to delete: {e}")
+                logging.error(f"\U0001F5D1\uFE0F  [CLEANUP] Failed to delete: {e}")
 
     if total_deleted:
-        logging.info(f"Deleted {total_deleted} 1-star tracks")
+        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Deleted {total_deleted} 1-star tracks total")
 
 
 if __name__ == "__main__":
