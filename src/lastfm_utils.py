@@ -57,12 +57,48 @@ def _load_sync_state():
             pass
     sync_full_history = os.environ.get("SYNC_FULL_HISTORY", "false").lower() in ["true", "1", "yes"]
     default_ts = 0 if sync_full_history else int(time.time())
-    return {"last_scrobble_timestamp": default_ts, "loved_hashes": []}
+    return {"last_scrobble_timestamp": default_ts, "loved_hashes": [], "recommendation_history": {}}
 
 
 def _save_sync_state(state):
     with open(SYNC_STATE_FILE, "w") as fh:
         json.dump(state, fh, indent=2)
+
+
+def _track_hash(artist: str, title: str) -> str:
+    return f"{artist}:{title}".lower().strip()
+
+
+def _get_recommendation_history(state: dict) -> dict:
+    return state.get("recommendation_history", {})
+
+
+def _record_recommended_tracks(state: dict, tracks: list):
+    history = state.get("recommendation_history", {})
+    now = int(time.time())
+    for track in tracks:
+        h = _track_hash(track.get("artist", ""), track.get("title", ""))
+        history[h] = now
+    state["recommendation_history"] = history
+
+
+def _filter_already_recommended(tracks: list, state: dict, playlist_label: str) -> list:
+    cooldown_days = int(os.environ.get("RECOMMENDATION_COOLDOWN_DAYS", "") or 90)
+    cooldown_seconds = cooldown_days * 86400
+    now = int(time.time())
+    history = _get_recommendation_history(state)
+    filtered = []
+    skipped = 0
+    for track in tracks:
+        h = _track_hash(track.get("artist", ""), track.get("title", ""))
+        last_recommended = history.get(h)
+        if last_recommended and (now - last_recommended) < cooldown_seconds:
+            skipped += 1
+            continue
+        filtered.append(track)
+    if skipped:
+        logging.info(f"\U0001F504 [{playlist_label}] Skipped {skipped} recently recommended tracks (cooldown: {cooldown_days}d)")
+    return filtered
 
 
 def sync_plex_to_lastfm(plex, network):
@@ -184,8 +220,15 @@ def generate_discover_weekly(network, max_tracks=20):
             logging.debug(f"\U0000274C [DISCOVER WEEKLY] Could not get tracks for {artist_name}: {e}")
         time.sleep(0.25)
 
-    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] Generated playlist with {len(tracks)} tracks")
-    return tracks[:max_tracks]
+    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] Generated playlist with {len(tracks)} candidates")
+
+    state = _load_sync_state()
+    filtered = _filter_already_recommended(tracks[:max_tracks], state, "DISCOVER WEEKLY")
+    _record_recommended_tracks(state, filtered)
+    _save_sync_state(state)
+
+    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] Final playlist: {len(filtered)} tracks")
+    return filtered
 
 
 def generate_release_radar(network, max_tracks=20, days_back=30):
@@ -285,5 +328,12 @@ def generate_release_radar(network, max_tracks=20, days_back=30):
             logging.debug(f"\U0000274C [RELEASE RADAR] Could not check releases for {artist_name}: {e}")
             time.sleep(1)
 
-    logging.info(f"\U0001F4E1 [RELEASE RADAR] Generated playlist with {len(tracks)} tracks")
-    return tracks[:max_tracks]
+    logging.info(f"\U0001F4E1 [RELEASE RADAR] Generated playlist with {len(tracks)} candidates")
+
+    state = _load_sync_state()
+    filtered = _filter_already_recommended(tracks[:max_tracks], state, "RELEASE RADAR")
+    _record_recommended_tracks(state, filtered)
+    _save_sync_state(state)
+
+    logging.info(f"\U0001F4E1 [RELEASE RADAR] Final playlist: {len(filtered)} tracks")
+    return filtered
