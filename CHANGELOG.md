@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.1.0...v0.2.0) (2026-03-03)
+
+
+### Features
+
+* **logging:** add emojis, context tags and ASCII banner to all log messages ([e8c508a](https://github.com/NyanCod3r/Plex-Track-Manager/commit/e8c508aa001e5533fb596c486b2ed8f3a78b255f))
+
 ## 0.1.0 (2026-03-02)
 
 
