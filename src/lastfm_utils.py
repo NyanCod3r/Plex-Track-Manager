@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 import pylast
 import musicbrainzngs
 
-musicbrainzngs.set_useragent("Plex-Track-Manager", "4.0.0", "https://github.com/NyanCod3r/Plex-Track-Manager")
+musicbrainzngs.set_useragent("Plex-Track-Manager", "0.3.0", "https://github.com/NyanCod3r/Plex-Track-Manager")
 logging.getLogger("musicbrainzngs").setLevel(logging.WARNING)
 logging.getLogger("pylast").setLevel(logging.WARNING)
 
