@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.1](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.0...v0.3.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* **logging:** silence pylast internal logger and add descriptive context to debug messages ([296f72a](https://github.com/NyanCod3r/Plex-Track-Manager/commit/296f72ac73a814a70f1ab308bc414e3408f75f50))
+* **version:** correct VERSION from 4.0.0 to 0.3.0 ([0f1a7b1](https://github.com/NyanCod3r/Plex-Track-Manager/commit/0f1a7b1360b8f36396691800a1e1835609dc924f))
+
 ## [0.2.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.1.0...v0.2.0) (2026-03-03)
 
 
