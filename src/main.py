@@ -93,7 +93,7 @@ def main():
         try:
             reset_stats()
 
-            logging.info("\U0001F504 [SYNC] Syncing Plex listening data to Last.fm...")
+            logging.debug("\U0001F504 [SYNC] Syncing Plex listening data to Last.fm...")
             sync_plex_to_lastfm(plex, network)
 
             logging.info("\U0001F3B5 [DISCOVER WEEKLY] Generating playlist...")
@@ -125,7 +125,7 @@ def process_one_star_deletions(plex):
     Scan all Plex music libraries for 1-star rated tracks and delete them
     from the Plex library and the filesystem.
     """
-    logging.info("\U0001F5D1\uFE0F  [CLEANUP] Scanning for 1-star rated tracks...")
+    logging.debug("\U0001F5D1\uFE0F  [CLEANUP] Scanning for 1-star rated tracks...")
 
     music_sections = [s for s in plex.library.sections() if s.type == "artist"]
     total_deleted = 0
@@ -135,7 +135,7 @@ def process_one_star_deletions(plex):
         if not one_star:
             continue
 
-        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Found {len(one_star)} 1-star tracks in library '{section.title}'")
+        logging.debug(f"\U0001F5D1\uFE0F  [CLEANUP] Found {len(one_star)} 1-star tracks in library '{section.title}'")
 
         for track_info in one_star:
             try:
@@ -145,7 +145,7 @@ def process_one_star_deletions(plex):
                 logging.error(f"\U0001F5D1\uFE0F  [CLEANUP] Failed to delete: {e}")
 
     if total_deleted:
-        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Deleted {total_deleted} 1-star tracks total")
+        logging.debug(f"\U0001F5D1\uFE0F  [CLEANUP] Deleted {total_deleted} 1-star tracks total")
 
 
 if __name__ == "__main__":

@@ -97,7 +97,7 @@ def _filter_already_recommended(tracks: list, state: dict, playlist_label: str) 
             continue
         filtered.append(track)
     if skipped:
-        logging.info(f"\U0001F504 [{playlist_label}] Skipped {skipped} recently recommended tracks (cooldown: {cooldown_days}d)")
+        logging.debug(f"\U0001F504 [{playlist_label}] Skipped {skipped} recently recommended tracks (cooldown: {cooldown_days}d)")
     return filtered
 
 
@@ -139,9 +139,9 @@ def sync_plex_to_lastfm(plex, network):
     state["loved_hashes"] = list(loved_hashes)
 
     if loved_count:
-        logging.info(f"\U00002764\uFE0F  [SYNC] Pushed {loved_count} loved tracks to Last.fm")
+        logging.info(f"\U00002764\uFE0F  [SYNC] Loved {loved_count} tracks on Last.fm")
     else:
-        logging.info("\U00002764\uFE0F  [SYNC] No new loved tracks to sync")
+        logging.debug("\U00002764\uFE0F  [SYNC] No new loved tracks to sync")
 
     scrobble_count = 0
     last_ts = state.get("last_scrobble_timestamp", int(time.time()))
@@ -187,7 +187,7 @@ def generate_discover_weekly(network, max_tracks=20):
         return []
 
     known_artists = {item.item.name.lower() for item in top_artists}
-    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] User has {len(known_artists)} known artists (last 3 months)")
+    logging.debug(f"\U0001F3B5 [DISCOVER WEEKLY] User has {len(known_artists)} known artists (last 3 months)")
 
     similar_artists = set()
     for item in top_artists[:15]:
@@ -200,7 +200,7 @@ def generate_discover_weekly(network, max_tracks=20):
             logging.debug(f"\U0000274C [DISCOVER WEEKLY] Could not get similar artists for {item.item.name}: {e}")
         time.sleep(0.25)
 
-    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] Found {len(similar_artists)} new similar artists")
+    logging.debug(f"\U0001F3B5 [DISCOVER WEEKLY] Found {len(similar_artists)} new similar artists")
 
     tracks = []
     for artist_name in list(similar_artists)[:30]:
@@ -220,7 +220,7 @@ def generate_discover_weekly(network, max_tracks=20):
             logging.debug(f"\U0000274C [DISCOVER WEEKLY] Could not get tracks for {artist_name}: {e}")
         time.sleep(0.25)
 
-    logging.info(f"\U0001F3B5 [DISCOVER WEEKLY] Generated playlist with {len(tracks)} candidates")
+    logging.debug(f"\U0001F3B5 [DISCOVER WEEKLY] Generated playlist with {len(tracks)} candidates")
 
     state = _load_sync_state()
     filtered = _filter_already_recommended(tracks[:max_tracks], state, "DISCOVER WEEKLY")
@@ -259,7 +259,7 @@ def generate_release_radar(network, max_tracks=20, days_back=30):
     except Exception:
         pass
 
-    logging.info(f"\U0001F4E1 [RELEASE RADAR] Checking {len(artist_names)} artists for new releases")
+    logging.debug(f"\U0001F4E1 [RELEASE RADAR] Checking {len(artist_names)} artists for new releases")
 
     cutoff = datetime.now() - timedelta(days=days_back)
     tracks = []
@@ -328,7 +328,7 @@ def generate_release_radar(network, max_tracks=20, days_back=30):
             logging.debug(f"\U0000274C [RELEASE RADAR] Could not check releases for {artist_name}: {e}")
             time.sleep(1)
 
-    logging.info(f"\U0001F4E1 [RELEASE RADAR] Generated playlist with {len(tracks)} candidates")
+    logging.debug(f"\U0001F4E1 [RELEASE RADAR] Generated playlist with {len(tracks)} candidates")
 
     state = _load_sync_state()
     filtered = _filter_already_recommended(tracks[:max_tracks], state, "RELEASE RADAR")
