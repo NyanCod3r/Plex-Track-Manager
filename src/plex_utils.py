@@ -81,7 +81,7 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
                 time.sleep(download_delay)
         logging.debug(f"\U00002705 [{playlist_name}] Download batch complete ({len(download_queue)} tracks processed)")
     else:
-        logging.debug(f"\U00002705 [{playlist_name}] All {len(tracks)} tracks already present")
+        logging.info(f"\U00002705 [{playlist_name}] All {len(tracks)} tracks already present")
 
 
 def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]:
@@ -433,49 +433,52 @@ def track_deletion_failure():
 
 
 def print_sync_recap():
-    sep = "\U0001F4CA " + "=" * 50
-    print("")
-    print(sep)
-    print("\U0001F4CA  SYNC CYCLE RECAP")
-    print(sep)
-    print(f"  \U0001F4E5 Downloads:  {download_stats['downloads_successful']}/{download_stats['downloads_attempted']} successful")
-    print(f"  \U0001F5D1\uFE0F  Deleted:    {download_stats['tracks_deleted']} tracks")
+    sep = "=" * 52
+    lines = [
+        "",
+        f"\U0001F4CA {sep}",
+        "\U0001F4CA  SYNC CYCLE RECAP",
+        f"\U0001F4CA {sep}",
+        f"  \U0001F4E5 Downloads:  {download_stats['downloads_successful']}/{download_stats['downloads_attempted']} successful",
+        f"  \U0001F5D1\uFE0F  Deleted:    {download_stats['tracks_deleted']} tracks",
+    ]
     if download_stats["downloads_attempted"] > 0:
         rate = (download_stats["downloads_successful"] / download_stats["downloads_attempted"]) * 100
-        print(f"  \U0001F3AF Success Rate: {rate:.1f}%")
+        lines.append(f"  \U0001F3AF Success Rate: {rate:.1f}%")
 
-    # Group downloaded tracks by playlist
     if download_stats["downloaded_tracks"]:
-        print("")
+        lines.append("")
         by_playlist = {}
         for entry in download_stats["downloaded_tracks"]:
             by_playlist.setdefault(entry["playlist"], []).append(entry)
         for playlist, entries in by_playlist.items():
-            print(f"  \U00002705 [{playlist}] Downloaded:")
+            lines.append(f"  \U00002705 [{playlist}] Downloaded:")
             for e in entries:
-                print(f"     - {e['artist']} - {e['track']}")
+                lines.append(f"     - {e['artist']} - {e['track']}")
 
     if download_stats["failed_tracks"]:
-        print("")
+        lines.append("")
         by_playlist = {}
         for entry in download_stats["failed_tracks"]:
             by_playlist.setdefault(entry["playlist"], []).append(entry)
         for playlist, entries in by_playlist.items():
-            print(f"  \U0000274C [{playlist}] Failed:")
+            lines.append(f"  \U0000274C [{playlist}] Failed:")
             for e in entries:
-                print(f"     - {e['artist']} - {e['track']}")
+                lines.append(f"     - {e['artist']} - {e['track']}")
 
     if download_stats["deleted_tracks"]:
-        print("")
+        lines.append("")
         by_library = {}
         for entry in download_stats["deleted_tracks"]:
             by_library.setdefault(entry["library"], []).append(entry)
         for library, entries in by_library.items():
-            print(f"  \U0001F5D1\uFE0F  [CLEANUP] Deleted from '{library}':")
+            lines.append(f"  \U0001F5D1\uFE0F  [CLEANUP] Deleted from '{library}':")
             for e in entries:
-                print(f"     - {e['artist']} - {e['track']}")
+                lines.append(f"     - {e['artist']} - {e['track']}")
 
     if not any([download_stats["downloaded_tracks"], download_stats["failed_tracks"], download_stats["deleted_tracks"]]):
-        print("\n  \U00002705 Nothing to do — all playlists up to date.")
+        lines.append("")
+        lines.append("  \U00002705 Nothing to do - all playlists up to date.")
 
-    print(sep + "\n")
+    lines.append(f"\U0001F4CA {sep}")
+    logging.info("\n".join(lines))

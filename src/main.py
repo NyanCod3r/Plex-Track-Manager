@@ -93,18 +93,22 @@ def main():
         try:
             reset_stats()
 
-            logging.debug("\U0001F504 [SYNC] Syncing Plex listening data to Last.fm...")
+            logging.info("\U0001F504 [SYNC] Syncing Plex to Last.fm...")
             sync_plex_to_lastfm(plex, network)
 
             logging.info("\U0001F3B5 [DISCOVER WEEKLY] Generating playlist...")
             discover_tracks = generate_discover_weekly(network, max_tracks=max_discover_tracks)
             if discover_tracks:
                 ensure_local_files(discover_tracks, "Discover Weekly", music_path)
+            else:
+                logging.info("\U0001F3B5 [DISCOVER WEEKLY] No new tracks to recommend")
 
             logging.info("\U0001F4E1 [RELEASE RADAR] Generating playlist...")
             radar_tracks = generate_release_radar(network, max_tracks=max_radar_tracks, days_back=radar_days_back)
             if radar_tracks:
                 ensure_local_files(radar_tracks, "Release Radar", music_path)
+            else:
+                logging.info("\U0001F4E1 [RELEASE RADAR] No new releases found")
 
             process_one_star_deletions(plex)
 
@@ -125,7 +129,7 @@ def process_one_star_deletions(plex):
     Scan all Plex music libraries for 1-star rated tracks and delete them
     from the Plex library and the filesystem.
     """
-    logging.debug("\U0001F5D1\uFE0F  [CLEANUP] Scanning for 1-star rated tracks...")
+    logging.info("\U0001F5D1\uFE0F  [CLEANUP] Scanning for 1-star rated tracks...")
 
     music_sections = [s for s in plex.library.sections() if s.type == "artist"]
     total_deleted = 0
@@ -145,7 +149,9 @@ def process_one_star_deletions(plex):
                 logging.error(f"\U0001F5D1\uFE0F  [CLEANUP] Failed to delete: {e}")
 
     if total_deleted:
-        logging.debug(f"\U0001F5D1\uFE0F  [CLEANUP] Deleted {total_deleted} 1-star tracks total")
+        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Done - deleted {total_deleted} tracks")
+    else:
+        logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Done - scanned {len(music_sections)} libraries, no 1-star tracks found")
 
 
 if __name__ == "__main__":

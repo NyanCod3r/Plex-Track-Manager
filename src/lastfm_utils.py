@@ -140,7 +140,7 @@ def sync_plex_to_lastfm(plex, network):
     state["loved_hashes"] = list(loved_hashes)
 
     if loved_count:
-        logging.info(f"\U00002764\uFE0F  [SYNC] Loved {loved_count} tracks on Last.fm")
+        logging.debug(f"\U00002764\uFE0F  [SYNC] Loved {loved_count} tracks on Last.fm")
     else:
         logging.debug("\U00002764\uFE0F  [SYNC] No new loved tracks to sync")
 
@@ -164,8 +164,12 @@ def sync_plex_to_lastfm(plex, network):
     except Exception as e:
         logging.warning(f"\U000026A0\uFE0F  [SYNC] Error reading Plex history: {e}")
 
-    if scrobble_count:
-        logging.info(f"\U0001F504 [SYNC] Scrobbled {scrobble_count} tracks to Last.fm")
+    if loved_count:
+        logging.info(f"\U0001F504 [SYNC] Done - loved {loved_count} tracks, scrobbled {scrobble_count} tracks")
+    elif scrobble_count:
+        logging.info(f"\U0001F504 [SYNC] Done - scrobbled {scrobble_count} tracks")
+    else:
+        logging.info("\U0001F504 [SYNC] Done - nothing new to sync")
 
     _save_sync_state(state)
 
