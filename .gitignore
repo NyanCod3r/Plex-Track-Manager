@@ -4,6 +4,8 @@ venv
 Pipfile*
 VERSION
 *.json
+!release-please-config.json
+!.release-please-manifest.json
 *pycache*
 *.bak
 *.log
