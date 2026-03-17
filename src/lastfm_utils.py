@@ -24,6 +24,7 @@ import musicbrainzngs
 
 musicbrainzngs.set_useragent("Plex-Track-Manager", "4.0.0", "https://github.com/NyanCod3r/Plex-Track-Manager")
 logging.getLogger("musicbrainzngs").setLevel(logging.WARNING)
+logging.getLogger("pylast").setLevel(logging.WARNING)
 
 SYNC_STATE_FILE = "lastfm_sync_state.json"
 
@@ -192,6 +193,7 @@ def generate_discover_weekly(network, max_tracks=20):
     similar_artists = set()
     for item in top_artists[:15]:
         try:
+            logging.debug(f"\U0001F3B5 [DISCOVER WEEKLY] Finding artists similar to '{item.item.name}'...")
             for similar in item.item.get_similar(limit=5):
                 name = similar.item.name
                 if name.lower() not in known_artists:
@@ -207,6 +209,7 @@ def generate_discover_weekly(network, max_tracks=20):
         if len(tracks) >= max_tracks:
             break
         try:
+            logging.debug(f"\U0001F3B5 [DISCOVER WEEKLY] Fetching top tracks for '{artist_name}'...")
             artist = network.get_artist(artist_name)
             for track_item in artist.get_top_tracks(limit=3):
                 tracks.append({
