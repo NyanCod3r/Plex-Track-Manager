@@ -6,6 +6,5 @@ VERSION
 *.json
 *pycache*
 *.bak
-CHANGELOG.md
 *.log
 *.code-workspace

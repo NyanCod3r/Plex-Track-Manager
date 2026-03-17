@@ -54,8 +54,6 @@ jobs:
       - name: Release Please (semantic versioning & release notes)
         id: release
         uses: googleapis/release-please-action@v4
-        with:
-          release-type: python
 
   docker:
     needs: release
