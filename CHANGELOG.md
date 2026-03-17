@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.1...v0.3.2) (2026-03-17)
+
+
+### Bug Fixes
+
+* **logging:** add stage-level INFO summaries for sync, cleanup, and empty playlists ([c9a2f97](https://github.com/NyanCod3r/Plex-Track-Manager/commit/c9a2f97e5ebd86483ffbe271e2f6158dc6cd17c6))
+
 ## [0.3.1](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.0...v0.3.1) (2026-03-17)
 
 
