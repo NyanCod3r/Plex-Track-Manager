@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.3...v0.3.4) (2026-03-29)
+
+
+### Bug Fixes
+
+* **scrobble:** query history per music section instead of server-wide to fix 0 scrobbles ([2cf2132](https://github.com/NyanCod3r/Plex-Track-Manager/commit/2cf2132830e57fef2ec35aea6d6cabb046bbd4d3))
+
 ## [0.3.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.2...v0.3.3) (2026-03-29)
 
 
