@@ -27,7 +27,7 @@ from plex_utils import (
     ensure_local_files,
 )
 
-VERSION = "0.3.2" # x-release-please-version
+VERSION = "0.3.3" # x-release-please-version
 
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
