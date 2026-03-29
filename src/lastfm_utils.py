@@ -56,7 +56,7 @@ def _load_sync_state():
                 return json.load(fh)
         except Exception:
             pass
-    sync_full_history = os.environ.get("SYNC_FULL_HISTORY", "false").lower() in ["true", "1", "yes"]
+    sync_full_history = os.environ.get("SYNC_FULL_HISTORY", "true").lower() in ["true", "1", "yes"]
     default_ts = 0 if sync_full_history else int(time.time())
     return {"last_scrobble_timestamp": default_ts, "loved_hashes": [], "recommendation_history": {}}
 
