@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.2...v0.3.3) (2026-03-29)
+
+
+### Bug Fixes
+
+* **scrobble:** default SYNC_FULL_HISTORY to true and reset scrobble timestamp ([a7d9866](https://github.com/NyanCod3r/Plex-Track-Manager/commit/a7d9866cd84b6788ea183eaa5b908d2230bf2469))
+* **version:** revert manual manifest edit, let release-please manage it automatically ([e5177f8](https://github.com/NyanCod3r/Plex-Track-Manager/commit/e5177f8c2bf38203d948ac2dbb96bd484b879127))
+* **version:** sync VERSION in main.py to 0.3.2 matching release-please manifest ([96ba5a9](https://github.com/NyanCod3r/Plex-Track-Manager/commit/96ba5a9ae1ebd321e102901da610531f15a1b0df))
+
 ## [0.3.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.1...v0.3.2) (2026-03-17)
 
 
