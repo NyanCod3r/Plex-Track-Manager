@@ -11,6 +11,7 @@ import logging
 import time
 
 from plexapi.server import PlexServer
+from requests.exceptions import ConnectionError, ConnectTimeout
 
 from lastfm_utils import (
     get_lastfm_network,
@@ -26,7 +27,7 @@ from plex_utils import (
     ensure_local_files,
 )
 
-VERSION = "0.3.0"
+VERSION = "0.3.1" # x-release-please-version
 
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
@@ -46,11 +47,29 @@ BANNER = f"""
  | |  | | (_| | | | | (_| | (_| |  __/ |
  |_|  |_|\\__,_|_| |_|\\__,_|\\__, |\\___|_|
                             |___/
-                                    v{VERSION}
+                                    v{{version}}
 """
 
+release_version = os.environ.get("RELEASE_VERSION", "").lstrip("v") or VERSION
+BANNER = BANNER.replace("{{version}}", release_version)
+
 print(BANNER)
-logging.info(f"Starting Plex-Track-Manager v{VERSION}...")
+logging.info(f"Starting Plex-Track-Manager v{release_version}...")
+
+
+def connect_plex(plex_url, plex_token, retries=5, delay=10):
+    for attempt in range(1, retries + 1):
+        try:
+            plex = PlexServer(plex_url, plex_token)
+            logging.info("[PLEX] Connected to Plex server.")
+            return plex
+        except (ConnectionError, ConnectTimeout) as e:
+            if attempt < retries:
+                logging.warning(f"[PLEX] Connection attempt {attempt}/{retries} failed: {e}. Retrying in {delay}s...")
+                time.sleep(delay)
+            else:
+                logging.error(f"[PLEX] Failed to connect after {retries} attempts: {e}")
+                return None
 
 
 def main():
@@ -62,8 +81,9 @@ def main():
         logging.error("[PLEX] PLEX_URL and PLEX_TOKEN must be set. Exiting.")
         return
 
-    plex = PlexServer(plex_url, plex_token)
-    logging.info("[PLEX] Connected to Plex server.")
+    plex = connect_plex(plex_url, plex_token)
+    if not plex:
+        return
 
     lastfm_api_key = os.environ.get("LASTFM_API_KEY")
     lastfm_api_secret = os.environ.get("LASTFM_API_SECRET")
