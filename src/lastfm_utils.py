@@ -148,19 +148,23 @@ def sync_plex_to_lastfm(plex, network):
     last_ts = state.get("last_scrobble_timestamp", int(time.time()))
     try:
         min_date = datetime.fromtimestamp(last_ts + 1)
-        history = plex.history(mindate=min_date)
-        for item in history:
-            if not (hasattr(item, "type") and item.type == "track"):
-                continue
+        for section in music_sections:
             try:
-                ts = int(item.viewedAt.timestamp()) if hasattr(item, "viewedAt") and item.viewedAt else int(time.time())
-                artist_name = item.grandparentTitle if hasattr(item, "grandparentTitle") else "Unknown"
-                album_name = item.parentTitle if hasattr(item, "parentTitle") else ""
-                network.scrobble(artist=artist_name, title=item.title, timestamp=ts, album=album_name)
-                scrobble_count += 1
-                state["last_scrobble_timestamp"] = max(state.get("last_scrobble_timestamp", 0), ts)
+                history = section.history(mindate=min_date)
+                logging.debug(f"\U0001F504 [SYNC] Library '{section.title}' returned {len(history)} history items since {min_date}")
+                for item in history:
+                    try:
+                        ts = int(item.viewedAt.timestamp()) if hasattr(item, "viewedAt") and item.viewedAt else int(time.time())
+                        artist_name = item.grandparentTitle if hasattr(item, "grandparentTitle") else "Unknown"
+                        album_name = item.parentTitle if hasattr(item, "parentTitle") else ""
+                        network.scrobble(artist=artist_name, title=item.title, timestamp=ts, album=album_name)
+                        scrobble_count += 1
+                        state["last_scrobble_timestamp"] = max(state.get("last_scrobble_timestamp", 0), ts)
+                        logging.debug(f"\U0001F504 [SYNC] Scrobbled: {artist_name} - {item.title}")
+                    except Exception as e:
+                        logging.debug(f"\U0000274C [SYNC] Could not scrobble: {e}")
             except Exception as e:
-                logging.debug(f"\U0000274C [SYNC] Could not scrobble: {e}")
+                logging.warning(f"\U000026A0\uFE0F  [SYNC] Error reading history for '{section.title}': {e}")
     except Exception as e:
         logging.warning(f"\U000026A0\uFE0F  [SYNC] Error reading Plex history: {e}")
 
