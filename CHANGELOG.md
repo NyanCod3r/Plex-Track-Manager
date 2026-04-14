@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.4...v0.3.5) (2026-04-14)
+
+
+### Bug Fixes
+
+* **state:** make sync state file path configurable and persist in /data for Docker ([ae15cc5](https://github.com/NyanCod3r/Plex-Track-Manager/commit/ae15cc5fdaa537ace8a501d0afe31dc46dd0b6ce))
+
 ## [0.3.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.3...v0.3.4) (2026-03-29)
 
 
