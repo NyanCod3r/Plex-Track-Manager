@@ -26,7 +26,7 @@ musicbrainzngs.set_useragent("Plex-Track-Manager", "0.3.0", "https://github.com/
 logging.getLogger("musicbrainzngs").setLevel(logging.WARNING)
 logging.getLogger("pylast").setLevel(logging.WARNING)
 
-SYNC_STATE_FILE = os.environ.get("SYNC_STATE_FILE", "lastfm_sync_state.json")
+SYNC_STATE_FILE = os.environ.get("SYNC_STATE_FILE", "") or "/data/lastfm_sync_state.json"
 
 
 def get_lastfm_network(api_key, api_secret, username, password):
