@@ -49,7 +49,8 @@ Plex-Track-Manager syncs your Plex listening habits to Last.fm, generates **Disc
 | `MAX_RADAR_TRACKS` | Maximum tracks in Release Radar playlist. | No | `20` |
 | `RADAR_DAYS_BACK` | How many days back to check for new releases. | No | `30` |
 | `RECOMMENDATION_COOLDOWN_DAYS` | Days before a previously recommended track can appear again in Discover Weekly or Release Radar. | No | `90` |
-| `SYNC_FULL_HISTORY` | On first run, scrobble entire Plex history to Last.fm (`true`/`false`). When `false`, only future plays are synced. | No | `false` |
+| `SYNC_FULL_HISTORY` | On first run, scrobble entire Plex history to Last.fm (`true`/`false`). When `false`, only future plays are synced. | No | `true` |
+| `SYNC_STATE_FILE` | Path to the JSON file that stores sync state (scrobble timestamp, loved hashes, recommendation history). Must be on a persistent volume in Docker. | No | `/data/lastfm_sync_state.json` |
 
 ### Getting your Last.fm API credentials
 
@@ -99,6 +100,7 @@ docker run -d \
   -e PREFER_FLAC="true" \
   -e LOG_LEVEL="INFO" \
   -v /path/to/your/music:/music \
+  -v /path/to/data:/data \
   nyancod3r/plex-track-manager:latest
 ````
 
