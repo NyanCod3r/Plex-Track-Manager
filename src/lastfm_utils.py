@@ -26,7 +26,7 @@ musicbrainzngs.set_useragent("Plex-Track-Manager", "0.3.0", "https://github.com/
 logging.getLogger("musicbrainzngs").setLevel(logging.WARNING)
 logging.getLogger("pylast").setLevel(logging.WARNING)
 
-SYNC_STATE_FILE = "lastfm_sync_state.json"
+SYNC_STATE_FILE = os.environ.get("SYNC_STATE_FILE", "lastfm_sync_state.json")
 
 
 def get_lastfm_network(api_key, api_secret, username, password):
@@ -62,6 +62,9 @@ def _load_sync_state():
 
 
 def _save_sync_state(state):
+    state_dir = os.path.dirname(SYNC_STATE_FILE)
+    if state_dir:
+        os.makedirs(state_dir, exist_ok=True)
     with open(SYNC_STATE_FILE, "w") as fh:
         json.dump(state, fh, indent=2)
 
@@ -145,35 +148,33 @@ def sync_plex_to_lastfm(plex, network):
         logging.debug("\U00002764\uFE0F  [SYNC] No new loved tracks to sync")
 
     scrobble_count = 0
+    scrobble_errors = 0
     last_ts = state.get("last_scrobble_timestamp", int(time.time()))
-    try:
-        min_date = datetime.fromtimestamp(last_ts + 1)
-        for section in music_sections:
-            try:
-                history = section.history(mindate=min_date)
-                logging.debug(f"\U0001F504 [SYNC] Library '{section.title}' returned {len(history)} history items since {min_date}")
-                for item in history:
-                    try:
-                        ts = int(item.viewedAt.timestamp()) if hasattr(item, "viewedAt") and item.viewedAt else int(time.time())
-                        artist_name = item.grandparentTitle if hasattr(item, "grandparentTitle") else "Unknown"
-                        album_name = item.parentTitle if hasattr(item, "parentTitle") else ""
-                        network.scrobble(artist=artist_name, title=item.title, timestamp=ts, album=album_name)
-                        scrobble_count += 1
-                        state["last_scrobble_timestamp"] = max(state.get("last_scrobble_timestamp", 0), ts)
-                        logging.debug(f"\U0001F504 [SYNC] Scrobbled: {artist_name} - {item.title}")
-                    except Exception as e:
-                        logging.debug(f"\U0000274C [SYNC] Could not scrobble: {e}")
-            except Exception as e:
-                logging.warning(f"\U000026A0\uFE0F  [SYNC] Error reading history for '{section.title}': {e}")
-    except Exception as e:
-        logging.warning(f"\U000026A0\uFE0F  [SYNC] Error reading Plex history: {e}")
+    min_date = datetime.fromtimestamp(last_ts + 1)
+    logging.info(f"\U0001F504 [SCROBBLE] Querying play history since {min_date} (ts={last_ts})")
+    total_history = 0
+    for section in music_sections:
+        try:
+            history = section.history(mindate=min_date)
+            total_history += len(history)
+            if history:
+                logging.info(f"\U0001F504 [SCROBBLE] Library '{section.title}': {len(history)} plays to scrobble")
+            for item in history:
+                try:
+                    ts = int(item.viewedAt.timestamp()) if hasattr(item, "viewedAt") and item.viewedAt else int(time.time())
+                    artist_name = item.grandparentTitle if hasattr(item, "grandparentTitle") else "Unknown"
+                    album_name = item.parentTitle if hasattr(item, "parentTitle") else ""
+                    network.scrobble(artist=artist_name, title=item.title, timestamp=ts, album=album_name)
+                    scrobble_count += 1
+                    state["last_scrobble_timestamp"] = max(state.get("last_scrobble_timestamp", 0), ts)
+                except Exception as e:
+                    scrobble_errors += 1
+                    logging.warning(f"\U0000274C [SCROBBLE] Failed: {artist_name} - {item.title}: {e}")
+        except Exception as e:
+            logging.error(f"\U0000274C [SCROBBLE] Error reading history for '{section.title}': {e}")
 
-    if loved_count:
-        logging.info(f"\U0001F504 [SYNC] Done - loved {loved_count} tracks, scrobbled {scrobble_count} tracks")
-    elif scrobble_count:
-        logging.info(f"\U0001F504 [SYNC] Done - scrobbled {scrobble_count} tracks")
-    else:
-        logging.info("\U0001F504 [SYNC] Done - nothing new to sync")
+    logging.info(f"\U0001F504 [SYNC] Done - loved {loved_count}, scrobbled {scrobble_count}/{total_history} tracks"
+                 + (f", {scrobble_errors} errors" if scrobble_errors else ""))
 
     _save_sync_state(state)
 

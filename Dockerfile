@@ -19,6 +19,7 @@ ENV MAX_RADAR_TRACKS ""
 ENV RADAR_DAYS_BACK ""
 ENV RECOMMENDATION_COOLDOWN_DAYS ""
 ENV SYNC_FULL_HISTORY ""
+ENV SYNC_STATE_FILE "/data/lastfm_sync_state.json"
 
 WORKDIR /app
 
@@ -34,6 +35,8 @@ RUN echo "╔══════════════════════�
     echo "║       PLEX  TRACK  MANAGER                    ║" >> /ascii_art.txt && \
     echo "╚═══════════════════════════════════════════════╝" >> /ascii_art.txt && \
     echo "Release Version: ${RELEASE_VERSION}" >> /ascii_art.txt
+
+RUN mkdir -p /data
 
 # Run the main script
 CMD ["sh", "-c", "cat /ascii_art.txt && python /app/src/main.py"]
