@@ -32,7 +32,8 @@ def _load_mb_cache(path: str) -> None:
         return
     try:
         with open(path, encoding="utf-8") as fh:
-            _mb_cache = json.load(fh)
+            raw = json.load(fh)
+        _mb_cache = {tuple(k.split("\x1f", 1)): v for k, v in raw.items()}
         logging.debug(f"[LB] Loaded {len(_mb_cache)} MB cache entries from {path}")
     except Exception as exc:
         logging.warning(f"[LB] Could not load MB cache from '{path}': {exc}")
@@ -43,8 +44,9 @@ def _save_mb_cache(path: str) -> None:
     if not path:
         return
     try:
+        serializable = {f"{k[0]}\x1f{k[1]}": v for k, v in _mb_cache.items()}
         with open(path, "w", encoding="utf-8") as fh:
-            json.dump(_mb_cache, fh)
+            json.dump(serializable, fh)
     except Exception as exc:
         logging.warning(f"[LB] Could not save MB cache to '{path}': {exc}")
 
