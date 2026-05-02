@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.1...v0.4.2) (2026-05-02)
+
+
+### Bug Fixes
+
+* **listenbrainz:** exclude Discover Weekly and Release Radar from LB playlist sync ([313756a](https://github.com/NyanCod3r/Plex-Track-Manager/commit/313756a856cfb22cc896d1f24d1c2f5b4f7a81aa))
+* **listenbrainz:** log warning when LB token not set instead of silently skipping ([e56dc3e](https://github.com/NyanCod3r/Plex-Track-Manager/commit/e56dc3edf6f3e544a4941ffa04587090c8de6daa))
+
 ## [0.4.1](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.0...v0.4.1) (2026-05-02)
 
 

@@ -34,7 +34,7 @@ from listenbrainz_utils import (
     remove_track_from_all_lb_playlists,
 )
 
-VERSION = "0.4.1" # x-release-please-version
+VERSION = "0.4.2" # x-release-please-version
 
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
