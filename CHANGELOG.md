@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.3...v0.4.4) (2026-05-02)
+
+
+### Bug Fixes
+
+* **listenbrainz:** deduplicate by MBID and persist MB lookup cache to disk ([45fc1c5](https://github.com/NyanCod3r/Plex-Track-Manager/commit/45fc1c586f5cb5103a817aac70ff05bab84c362e))
+
 ## [Unreleased]
 
 ### Bug Fixes
