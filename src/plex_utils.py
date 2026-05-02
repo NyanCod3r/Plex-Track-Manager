@@ -163,6 +163,25 @@ def normalize_for_matching(text: str) -> str:
     return " ".join(normalized.split())
 
 
+def track_in_plex_library(plex, artist: str, title: str) -> bool:
+    """
+    Check whether a track exists in any Plex music library by artist and title.
+    Uses Plex library search and normalizes both sides for fuzzy matching.
+    Returns True if a matching track is found.
+    """
+    norm_artist = normalize_for_matching(artist)
+    norm_title = normalize_for_matching(title)
+    try:
+        results = plex.library.search(title, mediatype="track")
+        for track in results:
+            if (normalize_for_matching(track.title) == norm_title and
+                    normalize_for_matching(getattr(track, "grandparentTitle", "") or "") == norm_artist):
+                return True
+    except Exception as exc:
+        logging.warning(f"\u26A0\uFE0F  [PLEX] Library search failed for '{artist} - {title}': {exc}")
+    return False
+
+
 def track_exists_in_directory(folder: str, track_title: str) -> bool:
     """
     Check FLAC first, then MP3 for the track (filename + metadata match).

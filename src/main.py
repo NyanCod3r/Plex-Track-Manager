@@ -25,6 +25,13 @@ from plex_utils import (
     reset_stats,
     print_sync_recap,
     ensure_local_files,
+    track_in_plex_library,
+)
+from listenbrainz_utils import (
+    sync_playlists_to_lb,
+    get_lb_playlists,
+    get_lb_playlist_tracks,
+    remove_track_from_all_lb_playlists,
 )
 
 VERSION = "0.3.5" # x-release-please-version
@@ -76,6 +83,12 @@ def main():
     plex_url = os.environ.get("PLEX_URL")
     plex_token = os.environ.get("PLEX_TOKEN")
     music_path = os.environ.get("MUSIC_PATH", "/music")
+    lb_token = os.environ.get("LISTENBRAINZ_TOKEN", "")
+    lb_username = os.environ.get("LISTENBRAINZ_USERNAME", "")
+    plex_json_path = os.environ.get("PLEX_PLAYLISTS_JSON", "/app/src/plex_playlists.json")
+    if lb_token and not lb_username:
+        logging.warning("[LB] LISTENBRAINZ_TOKEN set but LISTENBRAINZ_USERNAME not set. LB sync disabled.")
+        lb_token = ""
 
     if not plex_url or not plex_token:
         logging.error("[PLEX] PLEX_URL and PLEX_TOKEN must be set. Exiting.")
@@ -130,7 +143,12 @@ def main():
             else:
                 logging.info("\U0001F4E1 [RELEASE RADAR] No new releases found")
 
-            process_one_star_deletions(plex)
+            if lb_token:
+                logging.info("🎵 [LB] Syncing Plex playlists to ListenBrainz...")
+                sync_playlists_to_lb(plex, plex_json_path, lb_token, lb_username)
+                check_lb_missing_tracks(plex, lb_token, lb_username, music_path)
+
+            process_one_star_deletions(plex, lb_token, lb_username)
 
             print_sync_recap()
 
@@ -144,15 +162,49 @@ def main():
             time.sleep(60)
 
 
-def process_one_star_deletions(plex):
+def check_lb_missing_tracks(plex, lb_token: str, lb_username: str, music_path: str) -> None:
+    """
+    For every track in every ListenBrainz playlist, check if it is present in the
+    Plex library. Download any that are missing.
+    """
+    logging.info("\U0001F50D [LB] Checking LB playlists for tracks missing from Plex...")
+    try:
+        lb_playlists = get_lb_playlists(lb_username, lb_token)
+    except Exception as exc:
+        logging.error(f"\U0000274C [LB] Could not fetch LB playlists: {exc}")
+        return
+
+    for pl in lb_playlists:
+        try:
+            tracks = get_lb_playlist_tracks(pl["mbid"], lb_token)
+        except Exception as exc:
+            logging.warning(f"\u26A0\uFE0F  [LB] Could not fetch tracks for '{pl['title']}': {exc}")
+            continue
+
+        missing = [
+            {"title": t["title"], "artist": t["creator"]}
+            for t in tracks
+            if not track_in_plex_library(plex, t["creator"], t["title"])
+        ]
+        if missing:
+            logging.info(f"\U0001F4E5 [LB] '{pl['title']}': {len(missing)} track(s) not in Plex, downloading...")
+            ensure_local_files(missing, pl["title"], music_path)
+        else:
+            logging.debug(f"\U00002705 [LB] '{pl['title']}': all tracks present in Plex")
+
+
+def process_one_star_deletions(plex, lb_token: str = "", lb_username: str = "") -> None:
     """
     Scan all Plex music libraries for 1-star rated tracks and delete them
     from the Plex library and the filesystem.
+    If lb_token is set, also removes the track from all ListenBrainz playlists.
+    A failed LB removal is logged at CRITICAL level but does not stop the deletion.
     """
     logging.info("\U0001F5D1\uFE0F  [CLEANUP] Scanning for 1-star rated tracks...")
 
     music_sections = [s for s in plex.library.sections() if s.type == "artist"]
     total_deleted = 0
+    lb_errors = False
 
     for section in music_sections:
         one_star = get_one_star_tracks(plex, section.title)
@@ -162,11 +214,29 @@ def process_one_star_deletions(plex):
         logging.debug(f"\U0001F5D1\uFE0F  [CLEANUP] Found {len(one_star)} 1-star tracks in library '{section.title}'")
 
         for track_info in one_star:
+            artist = track_info.get("artist", "Unknown")
+            title = track_info.get("title", "Unknown")
             try:
                 delete_plex_track(track_info["plex_track"], section.title)
                 total_deleted += 1
             except Exception as e:
                 logging.error(f"\U0001F5D1\uFE0F  [CLEANUP] Failed to delete: {e}")
+
+            if lb_token:
+                try:
+                    remove_track_from_all_lb_playlists(lb_token, lb_username, artist, title)
+                except Exception as exc:
+                    logging.critical(
+                        f"[CRITICAL][LB] Failed to remove 1-star track '{artist} - {title}' "
+                        f"from ListenBrainz playlists. MANUAL CLEANUP REQUIRED. Error: {exc}"
+                    )
+                    lb_errors = True
+
+    if lb_errors:
+        logging.critical(
+            "[CRITICAL][LB] One or more 1-star tracks could NOT be removed from ListenBrainz. "
+            "See above entries for details."
+        )
 
     if total_deleted:
         logging.info(f"\U0001F5D1\uFE0F  [CLEANUP] Done - deleted {total_deleted} tracks")
