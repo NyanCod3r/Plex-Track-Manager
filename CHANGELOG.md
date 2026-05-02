@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.0...v0.4.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* **dockerfile:** add missing SYNC_STATE_FILE env var to src/Dockerfile[patch] ([749d489](https://github.com/NyanCod3r/Plex-Track-Manager/commit/749d4898db7c4651da1474428dcd26e292dfea53))
+
 ## [0.4.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.6...v0.4.0) (2026-05-02)
 
 
