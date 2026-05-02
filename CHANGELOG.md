@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.6](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.5...v0.3.6) (2026-04-14)
+
+
+### Bug Fixes
+
+* **config:** remove hardcoded SYNC_STATE_FILE from Dockerfile, default in Python ([fb0833f](https://github.com/NyanCod3r/Plex-Track-Manager/commit/fb0833fe1b1de6b3a353686e277d228e00306bcd))
+
 ## [0.3.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.4...v0.3.5) (2026-04-14)
 
 

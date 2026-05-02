@@ -5,5 +5,5 @@ musicbrainzngs==0.7.1
 yt-dlp
 youtube-search-python==1.6.6
 httpx<0.28
-pytest==8.3.5
+pytest==9.0.3
 factory_boy==3.3.3
