@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.6...v0.4.0) (2026-05-02)
+
+
+### Features
+
+* **listenbrainz:** integrate ListenBrainz playlist sync into Plex-Track-Manager ([10b2901](https://github.com/NyanCod3r/Plex-Track-Manager/commit/10b2901c08695b1130d7848b361203a7bd19a634))
+
 ## [0.3.6](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.3.5...v0.3.6) (2026-04-14)
 
 
