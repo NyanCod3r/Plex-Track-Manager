@@ -10,8 +10,9 @@ Plex-Track-Manager syncs your Plex listening habits to Last.fm, generates **Disc
 2. **Discover Weekly**: Using your Last.fm profile the app finds similar artists you don't listen to yet and picks their top tracks (max 20 by default).
 3. **Release Radar**: The app queries MusicBrainz for recent releases (last 30 days) from your favourite artists and collects the track listings.
 4. **Download**: Missing tracks are downloaded from YouTube via yt-dlp (FLAC preferred, MP3 fallback).
-5. **1-Star cleanup**: Tracks you rate 1-star in Plex are deleted from the library and filesystem.
-6. **Plex Smart Playlists** automatically pick up the new files based on folder path filters.
+5. **ListenBrainz sync**: Plex playlists are pushed to ListenBrainz. Tracks in your LB playlists that are missing from Plex are downloaded automatically.
+6. **1-Star cleanup**: Tracks you rate 1-star in Plex are deleted from the library, filesystem, and all ListenBrainz playlists they appear in.
+7. **Plex Smart Playlists** automatically pick up the new files based on folder path filters.
 
 ---
 
@@ -24,7 +25,8 @@ Plex-Track-Manager syncs your Plex listening habits to Last.fm, generates **Disc
 - **Smart file organization** - `MUSIC_PATH/<Playlist>/<Artist>/<Album>/<Artist - Track>.flac`
 - **Intelligent caching** - Checks for existing FLAC/MP3 before downloading
 - **Metadata tagging** - Automatic artist, track and album tags via yt-dlp
-- **1-Star rating cleanup** - Delete unwanted tracks from Plex and disk
+- **ListenBrainz integration** - Syncs Plex playlists to ListenBrainz and downloads tracks missing from Plex
+- **1-Star rating cleanup** - Delete unwanted tracks from Plex, disk, and all ListenBrainz playlists
 - **Continuous sync** - Runs in a loop with configurable wait time
 - **Docker support** - Ready-to-use container
 
@@ -51,6 +53,16 @@ Plex-Track-Manager syncs your Plex listening habits to Last.fm, generates **Disc
 | `RECOMMENDATION_COOLDOWN_DAYS` | Days before a previously recommended track can appear again in Discover Weekly or Release Radar. | No | `90` |
 | `SYNC_FULL_HISTORY` | On first run, scrobble entire Plex history to Last.fm (`true`/`false`). When `false`, only future plays are synced. | No | `true` |
 | `SYNC_STATE_FILE` | Path to the JSON file that stores sync state (scrobble timestamp, loved hashes, recommendation history). Must be on a persistent volume in Docker. | No | `/data/lastfm_sync_state.json` |
+| `LISTENBRAINZ_TOKEN` | Your ListenBrainz user token. If not set, all LB steps are skipped. | No | |
+| `LISTENBRAINZ_USERNAME` | Your ListenBrainz username. Required when token is set. | No | |
+| `PLEX_PLAYLISTS_JSON` | Path to a `plex_playlists.json` seed file used as an additional playlist source. | No | `/app/src/plex_playlists.json` |
+| `UNMATCHED_TRACKS_JSON` | Path to save tracks that could not be matched to a MusicBrainz MBID. Set to a path on a persistent volume to review later. | No | |
+
+### Getting your ListenBrainz token
+
+1. Log in at [ListenBrainz](https://listenbrainz.org)
+2. Go to **Settings** -> **Music Services & API** -> **User API Token**
+3. Copy the token value
 
 ### Getting your Last.fm API credentials
 
@@ -99,6 +111,9 @@ docker run -d \
   -e LASTFM_PASSWORD="your_password" \
   -e PREFER_FLAC="true" \
   -e LOG_LEVEL="INFO" \
+  -e LISTENBRAINZ_TOKEN="your_lb_token" \
+  -e LISTENBRAINZ_USERNAME="your_lb_username" \
+  -e UNMATCHED_TRACKS_JSON="/data/unmatched_tracks.json" \
   -v /path/to/your/music:/music \
   -v /path/to/data:/data \
   nyancod3r/plex-track-manager:latest
@@ -153,8 +168,25 @@ When you rate a track 1-star (2 thumbs down) in Plex, Plex-Track-Manager will:
 1. Detect the 1-star rating during the next sync cycle
 2. Delete the track from your Plex library
 3. Delete the local file from the filesystem
+4. Remove the track from every ListenBrainz playlist it appears in (requires `LISTENBRAINZ_TOKEN`)
+
+If the ListenBrainz removal fails, a `CRITICAL` log entry is written and the container keeps running. Check logs and remove the track manually on [ListenBrainz](https://listenbrainz.org) if this happens.
 
 The app auto-detects all music-type libraries in Plex and scans each one.
+
+---
+
+## ListenBrainz Playlist Sync
+
+When `LISTENBRAINZ_TOKEN` and `LISTENBRAINZ_USERNAME` are set, every sync cycle will:
+
+1. Read playlists from the live Plex server (and optionally from `PLEX_PLAYLISTS_JSON`)
+2. Create any playlist on ListenBrainz that does not exist yet
+3. Add any tracks missing from an existing ListenBrainz playlist
+4. Check every track in every ListenBrainz playlist against your Plex library
+5. Download any tracks not found in Plex via yt-dlp
+
+Tracks are matched to MusicBrainz recording MBIDs before being added to ListenBrainz. Tracks with no MBID match are skipped and optionally saved to `UNMATCHED_TRACKS_JSON` for manual review.
 
 ---
 
@@ -198,6 +230,7 @@ The app auto-detects all music-type libraries in Plex and scans each one.
 - `yt-dlp` (YouTube downloader, system package)
 - `youtube-search-python` (YouTube search)
 - `mutagen` (Audio metadata handling)
+- `requests` (ListenBrainz and MusicBrainz API calls)
 
 Install with:
 
