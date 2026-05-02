@@ -25,6 +25,30 @@ _mb_cache: dict = {}
 _mb_last_request: float = 0.0
 
 
+def _load_mb_cache(path: str) -> None:
+    """Load the persistent MB MBID cache from a JSON file into memory."""
+    global _mb_cache
+    if not path or not os.path.exists(path):
+        return
+    try:
+        with open(path, encoding="utf-8") as fh:
+            _mb_cache = json.load(fh)
+        logging.debug(f"[LB] Loaded {len(_mb_cache)} MB cache entries from {path}")
+    except Exception as exc:
+        logging.warning(f"[LB] Could not load MB cache from '{path}': {exc}")
+
+
+def _save_mb_cache(path: str) -> None:
+    """Persist the in-memory MB MBID cache to a JSON file."""
+    if not path:
+        return
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(_mb_cache, fh)
+    except Exception as exc:
+        logging.warning(f"[LB] Could not save MB cache to '{path}': {exc}")
+
+
 def _lb_headers(lb_token: str) -> dict:
     return {
         "Authorization": f"Token {lb_token}",
@@ -152,10 +176,14 @@ def get_lb_playlist_tracks(playlist_mbid: str, lb_token: str) -> List[Dict]:
     resp.raise_for_status()
     data = resp.json()
     raw_tracks = data.get("playlist", {}).get("track", [])
-    return [
-        {"title": t.get("title", ""), "creator": t.get("creator", ""), "index": idx}
-        for idx, t in enumerate(raw_tracks)
-    ]
+    result = []
+    for idx, t in enumerate(raw_tracks):
+        identifiers = t.get("identifier", [])
+        if isinstance(identifiers, str):
+            identifiers = [identifiers]
+        mbid = identifiers[0].split("/")[-1] if identifiers else ""
+        result.append({"title": t.get("title", ""), "creator": t.get("creator", ""), "index": idx, "mbid": mbid})
+    return result
 
 
 def get_track_index_in_lb_playlist(
@@ -309,13 +337,17 @@ def _load_plex_playlists(plex) -> list:
 _LB_SYNC_EXCLUDED = {"Discover Weekly", "Release Radar"}
 
 
-def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: str) -> dict:
+def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: str, mb_cache_file: str = "") -> dict:
     """
     Sync Plex playlists (from JSON + live Plex) to ListenBrainz.
     Creates missing playlists and adds missing tracks to existing ones.
+    Compares by MusicBrainz recording MBID to avoid duplicates regardless of
+    how the artist name is stored in LB (e.g. Spotify imports use canonical MB names).
     Playlists in _LB_SYNC_EXCLUDED are never synced.
     Returns a summary dict with created/updated/skipped/errors counts.
     """
+    _load_mb_cache(mb_cache_file)
+
     json_playlists = _load_json_playlists(plex_json_path)
     plex_playlists = _load_plex_playlists(plex)
     merged = _merge_playlists(json_playlists, plex_playlists)
@@ -340,14 +372,21 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
         try:
             if name in existing:
                 mbid = existing[name]
-                lb_track_set = {
+                lb_tracks = get_lb_playlist_tracks(mbid, lb_token)
+                lb_mbid_set = {t["mbid"] for t in lb_tracks if t["mbid"]}
+                lb_name_set = {
                     (_normalize(t["creator"]), _normalize(t["title"]))
-                    for t in get_lb_playlist_tracks(mbid, lb_token)
+                    for t in lb_tracks
                 }
-                missing = [
-                    t for t in tracks
-                    if (_normalize(t.get("artist", "")), _normalize(t.get("title", ""))) not in lb_track_set
-                ]
+                missing = []
+                for t in tracks:
+                    track_mbid = _lookup_mbid(t.get("artist", ""), t.get("title", ""))
+                    if track_mbid and track_mbid in lb_mbid_set:
+                        continue
+                    if not track_mbid and (_normalize(t.get("artist", "")), _normalize(t.get("title", ""))) in lb_name_set:
+                        continue
+                    missing.append(t)
+                _save_mb_cache(mb_cache_file)
                 if missing:
                     matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, missing)
                     logging.info(f"[LB] Updated '{name}': {matched} added, {skipped_tracks} skipped (no MBID)")
@@ -362,6 +401,7 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
                     errors += 1
                     continue
                 matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, tracks)
+                _save_mb_cache(mb_cache_file)
                 logging.info(f"[LB] Created '{name}': {matched} added, {skipped_tracks} skipped (no MBID)")
                 created += 1
         except Exception as exc:
