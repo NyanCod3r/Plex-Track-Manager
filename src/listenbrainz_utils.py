@@ -306,15 +306,20 @@ def _load_plex_playlists(plex) -> list:
     return playlists
 
 
+_LB_SYNC_EXCLUDED = {"Discover Weekly", "Release Radar"}
+
+
 def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: str) -> dict:
     """
     Sync Plex playlists (from JSON + live Plex) to ListenBrainz.
     Creates missing playlists and adds missing tracks to existing ones.
+    Playlists in _LB_SYNC_EXCLUDED are never synced.
     Returns a summary dict with created/updated/skipped/errors counts.
     """
     json_playlists = _load_json_playlists(plex_json_path)
     plex_playlists = _load_plex_playlists(plex)
     merged = _merge_playlists(json_playlists, plex_playlists)
+    merged = [pl for pl in merged if pl["title"] not in _LB_SYNC_EXCLUDED]
 
     if not merged:
         logging.info("[LB] No playlists to sync.")
