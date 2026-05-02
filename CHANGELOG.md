@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.2...v0.4.3) (2026-05-02)
+
+
+### Bug Fixes
+
+* **listenbrainz:** remove duplicate function definitions overriding correct implementations ([433ad81](https://github.com/NyanCod3r/Plex-Track-Manager/commit/433ad8126ca697ed7d2b5b8940355b8779f4c86e))
+
 ## [0.4.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.1...v0.4.2) (2026-05-02)
 
 
