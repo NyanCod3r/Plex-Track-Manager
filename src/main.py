@@ -144,9 +144,11 @@ def main():
                 logging.info("\U0001F4E1 [RELEASE RADAR] No new releases found")
 
             if lb_token:
-                logging.info("🎵 [LB] Syncing Plex playlists to ListenBrainz...")
+                logging.info("\U0001F3B5 [LB] Syncing Plex playlists to ListenBrainz...")
                 sync_playlists_to_lb(plex, plex_json_path, lb_token, lb_username)
                 check_lb_missing_tracks(plex, lb_token, lb_username, music_path)
+            else:
+                logging.warning("[LB] LISTENBRAINZ_TOKEN not set - skipping ListenBrainz sync.")
 
             process_one_star_deletions(plex, lb_token, lb_username)
 
