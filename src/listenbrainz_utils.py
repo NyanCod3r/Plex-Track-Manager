@@ -227,10 +227,11 @@ def create_lb_playlist(lb_token: str, title: str) -> Optional[str]:
     return resp.json().get("playlist_mbid")
 
 
-def add_tracks_to_lb_playlist(playlist_mbid: str, lb_token: str, tracks: list) -> Tuple[int, int]:
+def add_tracks_to_lb_playlist(playlist_mbid: str, lb_token: str, tracks: list, unmatched_out=None) -> Tuple[int, int]:
     """
     Resolve MBIDs and append matched tracks to an existing ListenBrainz playlist.
     tracks: list of {title, artist} dicts.
+    unmatched_out: optional list that will be extended with {artist, title} dicts for tracks with no MBID.
     Returns (matched_count, skipped_count).
     """
     jspf_tracks = []
@@ -241,6 +242,8 @@ def add_tracks_to_lb_playlist(playlist_mbid: str, lb_token: str, tracks: list) -
             jspf_tracks.append(jspf)
         else:
             skipped += 1
+            if unmatched_out is not None:
+                unmatched_out.append({"artist": t.get("artist", ""), "title": t.get("title", "")})
             logging.debug(f"[LB] No MBID found for '{t.get('artist')} - {t.get('title')}', skipping.")
 
     if not jspf_tracks:
@@ -339,7 +342,7 @@ def _load_plex_playlists(plex) -> list:
 _LB_SYNC_EXCLUDED = {"Discover Weekly", "Release Radar"}
 
 
-def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: str, mb_cache_file: str = "") -> dict:
+def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: str, mb_cache_file: str = "", unmatched_file: str = "") -> dict:
     """
     Sync Plex playlists (from JSON + live Plex) to ListenBrainz.
     Creates missing playlists and adds missing tracks to existing ones.
@@ -349,6 +352,7 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
     Returns a summary dict with created/updated/skipped/errors counts.
     """
     _load_mb_cache(mb_cache_file)
+    all_unmatched = []
 
     json_playlists = _load_json_playlists(plex_json_path)
     plex_playlists = _load_plex_playlists(plex)
@@ -390,7 +394,11 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
                     missing.append(t)
                 _save_mb_cache(mb_cache_file)
                 if missing:
-                    matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, missing)
+                    pl_unmatched = []
+                    matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, missing, unmatched_out=pl_unmatched)
+                    for u in pl_unmatched:
+                        u["playlist"] = name
+                    all_unmatched.extend(pl_unmatched)
                     logging.info(f"[LB] Updated '{name}': {matched} added, {skipped_tracks} skipped (no MBID)")
                     updated += 1
                 else:
@@ -402,13 +410,25 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
                     logging.error(f"[LB] Failed to create playlist '{name}'")
                     errors += 1
                     continue
-                matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, tracks)
+                pl_unmatched = []
+                matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, tracks, unmatched_out=pl_unmatched)
+                for u in pl_unmatched:
+                    u["playlist"] = name
+                all_unmatched.extend(pl_unmatched)
                 _save_mb_cache(mb_cache_file)
                 logging.info(f"[LB] Created '{name}': {matched} added, {skipped_tracks} skipped (no MBID)")
                 created += 1
         except Exception as exc:
             logging.error(f"[LB] Error processing playlist '{name}': {exc}")
             errors += 1
+
+    if unmatched_file and all_unmatched:
+        try:
+            with open(unmatched_file, "w", encoding="utf-8") as fh:
+                json.dump(all_unmatched, fh, indent=2)
+            logging.debug(f"[LB] Saved {len(all_unmatched)} unmatched tracks to {unmatched_file}")
+        except Exception as exc:
+            logging.warning(f"[LB] Could not save unmatched tracks to '{unmatched_file}': {exc}")
 
     logging.info(f"[LB] Sync done - created: {created}, updated: {updated}, skipped: {skipped}, errors: {errors}")
     return {"created": created, "updated": updated, "skipped": skipped, "errors": errors}

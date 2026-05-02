@@ -87,6 +87,7 @@ def main():
     lb_username = os.environ.get("LISTENBRAINZ_USERNAME", "")
     plex_json_path = os.environ.get("PLEX_PLAYLISTS_JSON", "/app/src/plex_playlists.json")
     mb_cache_file = os.environ.get("MB_CACHE_FILE", "/data/mb_cache.json")
+    unmatched_tracks_file = os.environ.get("UNMATCHED_TRACKS_JSON", "")
     if lb_token and not lb_username:
         logging.warning("[LB] LISTENBRAINZ_TOKEN set but LISTENBRAINZ_USERNAME not set. LB sync disabled.")
         lb_token = ""
@@ -146,7 +147,7 @@ def main():
 
             if lb_token:
                 logging.info("\U0001F3B5 [LB] Syncing Plex playlists to ListenBrainz...")
-                sync_playlists_to_lb(plex, plex_json_path, lb_token, lb_username, mb_cache_file)
+                sync_playlists_to_lb(plex, plex_json_path, lb_token, lb_username, mb_cache_file, unmatched_tracks_file)
                 check_lb_missing_tracks(plex, lb_token, lb_username, music_path)
             else:
                 logging.warning("[LB] LISTENBRAINZ_TOKEN not set - skipping ListenBrainz sync.")
