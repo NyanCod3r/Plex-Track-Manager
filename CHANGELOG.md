@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Bug Fixes
+
+* **listenbrainz:** deduplicate playlist tracks by MusicBrainz MBID to prevent re-adding Spotify-imported tracks on every run
+
+### Features
+
+* **listenbrainz:** persist MusicBrainz MBID lookup cache to disk (`MB_CACHE_FILE`) for faster subsequent sync cycles
+
 ## [0.4.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.2...v0.4.3) (2026-05-02)
 
 

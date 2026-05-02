@@ -57,6 +57,7 @@ Plex-Track-Manager syncs your Plex listening habits to Last.fm, generates **Disc
 | `LISTENBRAINZ_USERNAME` | Your ListenBrainz username. Required when token is set. | No | |
 | `PLEX_PLAYLISTS_JSON` | Path to a `plex_playlists.json` seed file used as an additional playlist source. | No | `/app/src/plex_playlists.json` |
 | `UNMATCHED_TRACKS_JSON` | Path to save tracks that could not be matched to a MusicBrainz MBID. Set to a path on a persistent volume to review later. | No | |
+| `MB_CACHE_FILE` | Path to persist the MusicBrainz MBID lookup cache between runs. Speeds up sync after the first cycle. Must be on a persistent volume in Docker. | No | `/data/mb_cache.json` |
 
 ### Getting your ListenBrainz token
 
@@ -114,6 +115,7 @@ docker run -d \
   -e LISTENBRAINZ_TOKEN="your_lb_token" \
   -e LISTENBRAINZ_USERNAME="your_lb_username" \
   -e UNMATCHED_TRACKS_JSON="/data/unmatched_tracks.json" \
+  -e MB_CACHE_FILE="/data/mb_cache.json" \
   -v /path/to/your/music:/music \
   -v /path/to/data:/data \
   nyancod3r/plex-track-manager:latest
@@ -187,6 +189,10 @@ When `LISTENBRAINZ_TOKEN` and `LISTENBRAINZ_USERNAME` are set, every sync cycle 
 5. Download any tracks not found in Plex via yt-dlp
 
 Tracks are matched to MusicBrainz recording MBIDs before being added to ListenBrainz. Tracks with no MBID match are skipped and optionally saved to `UNMATCHED_TRACKS_JSON` for manual review.
+
+Duplicate detection uses MBIDs rather than artist/title strings, so tracks imported from Spotify or other sources (which may use canonical MusicBrainz artist names) are correctly recognised as already present and not re-added.
+
+MBID lookups are cached in memory and optionally persisted to `MB_CACHE_FILE`. The first sync cycle performs one MusicBrainz API request per track (rate-limited to 1 req/sec). Subsequent cycles skip already-cached lookups, making sync significantly faster.
 
 ---
 
