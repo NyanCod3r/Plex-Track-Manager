@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.4...v0.4.5) (2026-05-02)
+
+
+### Bug Fixes
+
+* serialize MB cache tuple keys as strings; ci: upgrade Node.js 24 actions; fix Dockerfile ENV syntax ([1b59628](https://github.com/NyanCod3r/Plex-Track-Manager/commit/1b59628d9169392e716b265a01a4ef1ab04da705))
+
 ## [0.4.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.3...v0.4.4) (2026-05-02)
 
 
