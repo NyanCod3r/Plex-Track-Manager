@@ -163,6 +163,27 @@ def normalize_for_matching(text: str) -> str:
     return " ".join(normalized.split())
 
 
+def build_plex_track_set(plex) -> set:
+    """
+    Load every track from all Plex music libraries into a set of
+    normalized (artist, title) tuples.  Call once per cycle and pass
+    the result to functions that need to check track presence.
+    """
+    track_set: set = set()
+    try:
+        music_sections = [s for s in plex.library.sections() if s.type == "artist"]
+        for section in music_sections:
+            for track in section.searchTracks():
+                artist = normalize_for_matching(getattr(track, "grandparentTitle", "") or "")
+                title = normalize_for_matching(track.title or "")
+                if artist or title:
+                    track_set.add((artist, title))
+        logging.info(f"[PLEX] Built track set: {len(track_set)} tracks across {len(music_sections)} library section(s)")
+    except Exception as exc:
+        logging.warning(f"[PLEX] Could not build track set: {exc}")
+    return track_set
+
+
 def track_in_plex_library(plex, artist: str, title: str) -> bool:
     """
     Check whether a track exists in any Plex music library by artist and title.

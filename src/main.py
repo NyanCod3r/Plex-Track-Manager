@@ -25,7 +25,7 @@ from plex_utils import (
     reset_stats,
     print_sync_recap,
     ensure_local_files,
-    track_in_plex_library,
+    build_plex_track_set,
 )
 from listenbrainz_utils import (
     sync_playlists_to_lb,
@@ -148,7 +148,8 @@ def main():
             if lb_token:
                 logging.info("\U0001F3B5 [LB] Syncing Plex playlists to ListenBrainz...")
                 sync_playlists_to_lb(plex, plex_json_path, lb_token, lb_username, mb_cache_file, unmatched_tracks_file)
-                check_lb_missing_tracks(plex, lb_token, lb_username, music_path)
+                plex_track_set = build_plex_track_set(plex)
+                check_lb_missing_tracks(plex_track_set, lb_token, lb_username, music_path)
             else:
                 logging.warning("[LB] LISTENBRAINZ_TOKEN not set - skipping ListenBrainz sync.")
 
@@ -166,10 +167,11 @@ def main():
             time.sleep(60)
 
 
-def check_lb_missing_tracks(plex, lb_token: str, lb_username: str, music_path: str) -> None:
+def check_lb_missing_tracks(plex_track_set: set, lb_token: str, lb_username: str, music_path: str) -> None:
     """
     For every track in every ListenBrainz playlist, check if it is present in the
-    Plex library. Download any that are missing.
+    Plex library using a pre-built normalized track set (O(1) lookups).
+    Downloads any missing tracks via yt-dlp.
     """
     logging.info("\U0001F50D [LB] Checking LB playlists for tracks missing from Plex...")
     try:
@@ -178,7 +180,10 @@ def check_lb_missing_tracks(plex, lb_token: str, lb_username: str, music_path: s
         logging.error(f"\U0000274C [LB] Could not fetch LB playlists: {exc}")
         return
 
+    from plex_utils import normalize_for_matching
+
     for pl in lb_playlists:
+        time.sleep(0.5)  # respect LB rate limit between playlist fetches
         try:
             tracks = get_lb_playlist_tracks(pl["mbid"], lb_token)
         except Exception as exc:
@@ -188,7 +193,7 @@ def check_lb_missing_tracks(plex, lb_token: str, lb_username: str, music_path: s
         missing = [
             {"title": t["title"], "artist": t["creator"]}
             for t in tracks
-            if not track_in_plex_library(plex, t["creator"], t["title"])
+            if (normalize_for_matching(t["creator"]), normalize_for_matching(t["title"])) not in plex_track_set
         ]
         if missing:
             logging.info(f"\U0001F4E5 [LB] '{pl['title']}': {len(missing)} track(s) not in Plex, downloading...")
