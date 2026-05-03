@@ -33,6 +33,7 @@ from listenbrainz_utils import (
     get_lb_playlists,
     get_lb_playlist_tracks,
     remove_track_from_all_lb_playlists,
+    get_plex_mbid_set,
 )
 
 VERSION = "0.6.3" # x-release-please-version
@@ -150,7 +151,8 @@ def main():
                 logging.info("\U0001F3B5 [LB] Syncing Plex playlists to ListenBrainz...")
                 sync_playlists_to_lb(plex, plex_json_path, lb_token, lb_username, mb_cache_file, unmatched_tracks_file)
                 plex_track_set = build_plex_track_set(plex)
-                check_lb_missing_tracks(plex_track_set, lb_token, lb_username, music_path)
+                plex_mbid_set = get_plex_mbid_set()
+                check_lb_missing_tracks(plex_track_set, plex_mbid_set, lb_token, lb_username, music_path)
             else:
                 logging.warning("[LB] LISTENBRAINZ_TOKEN not set - skipping ListenBrainz sync.")
 
@@ -168,11 +170,16 @@ def main():
             time.sleep(60)
 
 
-def check_lb_missing_tracks(plex_track_set: set, lb_token: str, lb_username: str, music_path: str) -> None:
+def check_lb_missing_tracks(plex_track_set: set, plex_mbid_set: set, lb_token: str, lb_username: str, music_path: str) -> None:
     """
-    For every track in every ListenBrainz playlist, check if it is present in the
-    Plex library using a pre-built normalized track set (O(1) lookups).
-    Downloads any missing tracks via yt-dlp.
+    For every LB playlist, check which tracks are missing from the Plex library
+    and download them via yt-dlp.
+
+    Strategy (in order of reliability):
+    1. MBID match against plex_mbid_set  — fast O(1), covers all app-synced tracks.
+    2. Text match against plex_track_set — fallback for tracks with no cached MBID.
+       Requires re-fetching the playlist with fetch_metadata=True (MusicBrainz names).
+    Only playlists that have tracks surviving step 1 trigger a second API call.
     """
     logging.info("\U0001F50D [LB] Checking LB playlists for tracks missing from Plex...")
     try:
@@ -182,29 +189,50 @@ def check_lb_missing_tracks(plex_track_set: set, lb_token: str, lb_username: str
         return
 
     for pl in lb_playlists:
-        time.sleep(0.5)  # respect LB rate limit between playlist fetches
+        time.sleep(0.5)
         try:
-            tracks = get_lb_playlist_tracks(pl["mbid"], lb_token, fetch_metadata=True)
+            # Step 1: fast fetch — MBID only, no metadata roundtrip
+            tracks = get_lb_playlist_tracks(pl["mbid"], lb_token, fetch_metadata=False)
         except Exception as exc:
             logging.warning(f"\u26A0\uFE0F  [LB] Could not fetch tracks for '{pl['title']}': {exc}")
             continue
 
-        valid = [t for t in tracks if t["title"] and t["creator"]]
-        skipped_empty = len(tracks) - len(valid)
-        if skipped_empty:
-            logging.debug(f"[LB] '{pl['title']}': {skipped_empty}/{len(tracks)} track(s) had no artist/title, skipped")
+        # Partition by MBID presence in plex_mbid_set
+        in_plex_by_mbid = {t["mbid"] for t in tracks if t["mbid"] and t["mbid"] in plex_mbid_set}
+        unresolved = [t for t in tracks if t["mbid"] not in in_plex_by_mbid]
 
-        missing = [
-            {"title": t["title"], "artist": t["creator"]}
-            for t in valid
-            if (normalize_for_matching(t["creator"]), normalize_for_matching(t["title"])) not in plex_track_set
-        ]
+        if not unresolved:
+            logging.info(f"\U00002705 [LB] '{pl['title']}': all {len(tracks)} track(s) in Plex (MBID match)")
+            continue
+
+        # Step 2: re-fetch with metadata for unresolved tracks only
+        time.sleep(0.5)
+        try:
+            tracks_with_meta = get_lb_playlist_tracks(pl["mbid"], lb_token, fetch_metadata=True)
+        except Exception as exc:
+            logging.warning(f"\u26A0\uFE0F  [LB] Could not fetch metadata for '{pl['title']}': {exc}")
+            tracks_with_meta = []
+
+        unresolved_mbids = {t["mbid"] for t in unresolved}
+        meta_map = {t["mbid"]: t for t in tracks_with_meta if t["mbid"]}
+
+        missing = []
+        for t in unresolved:
+            meta = meta_map.get(t["mbid"], t)
+            artist, title = meta.get("creator", ""), meta.get("title", "")
+            if not artist or not title:
+                logging.debug(f"[LB] '{pl['title']}': skipping track with no metadata (mbid={t['mbid']})")
+                continue
+            norm_key = (normalize_for_matching(artist), normalize_for_matching(title))
+            if norm_key in plex_track_set:
+                continue  # found via text match
+            missing.append({"title": title, "artist": artist})
 
         if missing:
-            logging.info(f"\U0001F4E5 [LB] '{pl['title']}': {len(missing)}/{len(valid)} track(s) not in Plex, downloading...")
+            logging.info(f"\U0001F4E5 [LB] '{pl['title']}': {len(missing)}/{len(tracks)} track(s) not in Plex, downloading...")
             ensure_local_files(missing, pl["title"], music_path)
         else:
-            logging.info(f"\U00002705 [LB] '{pl['title']}': all {len(valid)} track(s) present in Plex")
+            logging.info(f"\U00002705 [LB] '{pl['title']}': all {len(tracks)} track(s) in Plex ({len(in_plex_by_mbid)} MBID + {len(tracks) - len(unresolved) + len(tracks_with_meta) - len(missing)} text)")
 
 
 def process_one_star_deletions(plex, lb_token: str = "", lb_username: str = "") -> None:

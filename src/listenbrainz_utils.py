@@ -73,6 +73,16 @@ def _save_mb_cache(path: str) -> None:
         logging.warning(f"[LB] Could not save MB cache to '{path}': {exc}")
 
 
+def get_plex_mbid_set() -> set:
+    """
+    Return the set of all non-empty MBIDs in the MB cache.
+    Every MBID here corresponds to a Plex track that was resolved during a
+    previous sync cycle, so if an LB track's MBID is in this set, it is
+    already present in the Plex library.
+    """
+    return {v for v in _mb_cache.values() if v}
+
+
 def _save_unmatched(unmatched_dir: str, playlist_name: str, tracks: list) -> None:
     """Write unmatched tracks for a single playlist to <unmatched_dir>/<playlist_name>.json."""
     if not unmatched_dir or not tracks:
