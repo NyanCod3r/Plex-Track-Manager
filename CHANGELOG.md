@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.5.0...v0.6.0) (2026-05-03)
+
+
+### Features
+
+* write per-playlist unmatched JSON files to directory after each playlist ([3c50545](https://github.com/NyanCod3r/Plex-Track-Manager/commit/3c505451165dcea076fd2fc6a55ca297df3a69ab))
+
 ## [0.5.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.5...v0.5.0) (2026-05-03)
 
 
