@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.5...v0.5.0) (2026-05-03)
+
+
+### Features
+
+* implement UNMATCHED_TRACKS_JSON -- save tracks with no MBID to file ([925c34e](https://github.com/NyanCod3r/Plex-Track-Manager/commit/925c34e53fe986f52d11ec9642f379efae7e7beb))
+
+
+### Bug Fixes
+
+* use requests.Session with retry adapter to handle stale LB connections ([55c4d57](https://github.com/NyanCod3r/Plex-Track-Manager/commit/55c4d57ec5e30207c2d70c182a735a105dad3e08))
+
 ## [0.4.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.4.4...v0.4.5) (2026-05-02)
 
 
