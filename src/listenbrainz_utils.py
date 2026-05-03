@@ -14,6 +14,8 @@ import time
 from typing import Dict, List, Optional, Set, Tuple
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 LB_API_BASE = "https://api.listenbrainz.org"
 MB_API_BASE = "https://musicbrainz.org/ws/2"
@@ -23,6 +25,25 @@ MB_RATE_LIMIT = 1.0
 
 _mb_cache: dict = {}
 _mb_last_request: float = 0.0
+
+
+def _make_session() -> requests.Session:
+    """Create a requests.Session with retry-on-connection-reset behaviour."""
+    session = requests.Session()
+    retry = Retry(
+        total=3,
+        backoff_factor=1,
+        status_forcelist=[500, 502, 503, 504],
+        allowed_methods=["GET", "POST"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+_session: requests.Session = _make_session()
 
 
 def _load_mb_cache(path: str) -> None:
@@ -74,7 +95,7 @@ def _mb_search(query: str) -> str:
     if elapsed < MB_RATE_LIMIT:
         time.sleep(MB_RATE_LIMIT - elapsed)
     try:
-        resp = requests.get(
+        resp = _session.get(
             f"{MB_API_BASE}/recording/",
             params={"query": query, "fmt": "json", "limit": 5},
             headers={"User-Agent": MB_USER_AGENT},
@@ -130,7 +151,7 @@ def get_lb_playlists(lb_username: str, lb_token: str) -> List[Dict]:
     page_size = 25
     while True:
         url = f"{LB_API_BASE}/1/user/{lb_username}/playlists"
-        resp = requests.get(
+        resp = _session.get(
             url,
             headers=_lb_headers(lb_token),
             params={"count": page_size, "offset": offset},
@@ -169,7 +190,7 @@ def get_lb_playlist_tracks(playlist_mbid: str, lb_token: str) -> List[Dict]:
     Returns a list of {title, creator, index} dicts.
     """
     url = f"{LB_API_BASE}/1/playlist/{playlist_mbid}"
-    resp = requests.get(
+    resp = _session.get(
         url,
         headers=_lb_headers(lb_token),
         params={"fetch_metadata": "false"},
@@ -217,7 +238,7 @@ def create_lb_playlist(lb_token: str, title: str) -> Optional[str]:
             },
         }
     }
-    resp = requests.post(
+    resp = _session.post(
         f"{LB_API_BASE}/1/playlist/create",
         headers=_lb_headers(lb_token),
         json=body,
@@ -252,7 +273,7 @@ def add_tracks_to_lb_playlist(playlist_mbid: str, lb_token: str, tracks: list, u
     for i in range(0, len(jspf_tracks), MAX_TRACKS_PER_ADD):
         chunk = jspf_tracks[i:i + MAX_TRACKS_PER_ADD]
         body = {"playlist": {"track": chunk}}
-        resp = requests.post(
+        resp = _session.post(
             f"{LB_API_BASE}/1/playlist/{playlist_mbid}/item/add",
             headers=_lb_headers(lb_token),
             json=body,
@@ -271,7 +292,7 @@ def remove_track_from_lb_playlist(playlist_mbid: str, lb_token: str, track_index
     Returns True on success, raises on failure.
     """
     body = {"index": track_index, "count": 1}
-    resp = requests.post(
+    resp = _session.post(
         f"{LB_API_BASE}/1/playlist/{playlist_mbid}/item/delete",
         headers=_lb_headers(lb_token),
         json=body,
