@@ -193,6 +193,7 @@ def check_lb_missing_tracks(plex_track_set: set, lb_token: str, lb_username: str
         missing = [
             {"title": t["title"], "artist": t["creator"]}
             for t in tracks
+            if t["title"] and t["creator"]  # skip tracks with no metadata
             if (normalize_for_matching(t["creator"]), normalize_for_matching(t["title"])) not in plex_track_set
         ]
         if missing:
