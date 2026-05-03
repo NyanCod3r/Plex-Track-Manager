@@ -72,6 +72,21 @@ def _save_mb_cache(path: str) -> None:
         logging.warning(f"[LB] Could not save MB cache to '{path}': {exc}")
 
 
+def _save_unmatched(unmatched_dir: str, playlist_name: str, tracks: list) -> None:
+    """Write unmatched tracks for a single playlist to <unmatched_dir>/<playlist_name>.json."""
+    if not unmatched_dir or not tracks:
+        return
+    try:
+        os.makedirs(unmatched_dir, exist_ok=True)
+        safe_name = playlist_name.replace("/", "_").replace("\\", "_")
+        path = os.path.join(unmatched_dir, f"{safe_name}.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(tracks, fh, indent=2)
+        logging.debug(f"[LB] Saved {len(tracks)} unmatched tracks to {path}")
+    except Exception as exc:
+        logging.warning(f"[LB] Could not save unmatched tracks for '{playlist_name}': {exc}")
+
+
 def _lb_headers(lb_token: str) -> dict:
     return {
         "Authorization": f"Token {lb_token}",
@@ -373,7 +388,6 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
     Returns a summary dict with created/updated/skipped/errors counts.
     """
     _load_mb_cache(mb_cache_file)
-    all_unmatched = []
 
     json_playlists = _load_json_playlists(plex_json_path)
     plex_playlists = _load_plex_playlists(plex)
@@ -417,9 +431,7 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
                 if missing:
                     pl_unmatched = []
                     matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, missing, unmatched_out=pl_unmatched)
-                    for u in pl_unmatched:
-                        u["playlist"] = name
-                    all_unmatched.extend(pl_unmatched)
+                    _save_unmatched(unmatched_file, name, pl_unmatched)
                     logging.info(f"[LB] Updated '{name}': {matched} added, {skipped_tracks} skipped (no MBID)")
                     updated += 1
                 else:
@@ -433,23 +445,13 @@ def sync_playlists_to_lb(plex, plex_json_path: str, lb_token: str, lb_username: 
                     continue
                 pl_unmatched = []
                 matched, skipped_tracks = add_tracks_to_lb_playlist(mbid, lb_token, tracks, unmatched_out=pl_unmatched)
-                for u in pl_unmatched:
-                    u["playlist"] = name
-                all_unmatched.extend(pl_unmatched)
+                _save_unmatched(unmatched_file, name, pl_unmatched)
                 _save_mb_cache(mb_cache_file)
                 logging.info(f"[LB] Created '{name}': {matched} added, {skipped_tracks} skipped (no MBID)")
                 created += 1
         except Exception as exc:
             logging.error(f"[LB] Error processing playlist '{name}': {exc}")
             errors += 1
-
-    if unmatched_file and all_unmatched:
-        try:
-            with open(unmatched_file, "w", encoding="utf-8") as fh:
-                json.dump(all_unmatched, fh, indent=2)
-            logging.debug(f"[LB] Saved {len(all_unmatched)} unmatched tracks to {unmatched_file}")
-        except Exception as exc:
-            logging.warning(f"[LB] Could not save unmatched tracks to '{unmatched_file}': {exc}")
 
     logging.info(f"[LB] Sync done - created: {created}, updated: {updated}, skipped: {skipped}, errors: {errors}")
     return {"created": created, "updated": updated, "skipped": skipped, "errors": errors}
