@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.0...v0.6.1) (2026-05-03)
+
+
+### Performance Improvements
+
+* build Plex track set once per cycle for O(1) LB missing-track checks; fix: add 429 to LB retry list with Retry-After support; fix: rate-limit LB playlist fetches to avoid 429 ([8f1c4d2](https://github.com/NyanCod3r/Plex-Track-Manager/commit/8f1c4d222ff5bcf57cd5c6d759d31d7d38987f8d))
+
 ## [0.6.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.5.0...v0.6.0) (2026-05-03)
 
 
