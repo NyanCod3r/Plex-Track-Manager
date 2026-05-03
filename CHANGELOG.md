@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.4...v0.6.5) (2026-05-03)
+
+
+### Bug Fixes
+
+* use MBID-primary check for LB missing tracks; skip text match for app-synced playlists[patch] ([f3dacd2](https://github.com/NyanCod3r/Plex-Track-Manager/commit/f3dacd21919e20a42ae6db86ea9c85e112a61068))
+
 ## [0.6.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.3...v0.6.4) (2026-05-03)
 
 
