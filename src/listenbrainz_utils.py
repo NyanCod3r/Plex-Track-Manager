@@ -200,16 +200,18 @@ def find_lb_playlist_mbid(lb_username: str, lb_token: str, title: str) -> Option
     return None
 
 
-def get_lb_playlist_tracks(playlist_mbid: str, lb_token: str) -> List[Dict]:
+def get_lb_playlist_tracks(playlist_mbid: str, lb_token: str, fetch_metadata: bool = False) -> List[Dict]:
     """
     Fetch all tracks from a ListenBrainz playlist.
-    Returns a list of {title, creator, index} dicts.
+    Returns a list of {title, creator, index, mbid} dicts.
+    Set fetch_metadata=True to have LB populate title/creator from MusicBrainz.
+    Without it, title and creator may be empty for MBID-only track entries.
     """
     url = f"{LB_API_BASE}/1/playlist/{playlist_mbid}"
     resp = _session.get(
         url,
         headers=_lb_headers(lb_token),
-        params={"fetch_metadata": "false"},
+        params={"fetch_metadata": "true" if fetch_metadata else "false"},
         timeout=30,
     )
     resp.raise_for_status()

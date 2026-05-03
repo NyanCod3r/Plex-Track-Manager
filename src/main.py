@@ -184,7 +184,7 @@ def check_lb_missing_tracks(plex_track_set: set, lb_token: str, lb_username: str
     for pl in lb_playlists:
         time.sleep(0.5)  # respect LB rate limit between playlist fetches
         try:
-            tracks = get_lb_playlist_tracks(pl["mbid"], lb_token)
+            tracks = get_lb_playlist_tracks(pl["mbid"], lb_token, fetch_metadata=True)
         except Exception as exc:
             logging.warning(f"\u26A0\uFE0F  [LB] Could not fetch tracks for '{pl['title']}': {exc}")
             continue
