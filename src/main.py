@@ -26,6 +26,7 @@ from plex_utils import (
     print_sync_recap,
     ensure_local_files,
     build_plex_track_set,
+    normalize_for_matching,
 )
 from listenbrainz_utils import (
     sync_playlists_to_lb,
@@ -180,8 +181,6 @@ def check_lb_missing_tracks(plex_track_set: set, lb_token: str, lb_username: str
         logging.error(f"\U0000274C [LB] Could not fetch LB playlists: {exc}")
         return
 
-    from plex_utils import normalize_for_matching
-
     for pl in lb_playlists:
         time.sleep(0.5)  # respect LB rate limit between playlist fetches
         try:
@@ -190,17 +189,22 @@ def check_lb_missing_tracks(plex_track_set: set, lb_token: str, lb_username: str
             logging.warning(f"\u26A0\uFE0F  [LB] Could not fetch tracks for '{pl['title']}': {exc}")
             continue
 
+        valid = [t for t in tracks if t["title"] and t["creator"]]
+        skipped_empty = len(tracks) - len(valid)
+        if skipped_empty:
+            logging.debug(f"[LB] '{pl['title']}': {skipped_empty}/{len(tracks)} track(s) had no artist/title, skipped")
+
         missing = [
             {"title": t["title"], "artist": t["creator"]}
-            for t in tracks
-            if t["title"] and t["creator"]  # skip tracks with no metadata
+            for t in valid
             if (normalize_for_matching(t["creator"]), normalize_for_matching(t["title"])) not in plex_track_set
         ]
+
         if missing:
-            logging.info(f"\U0001F4E5 [LB] '{pl['title']}': {len(missing)} track(s) not in Plex, downloading...")
+            logging.info(f"\U0001F4E5 [LB] '{pl['title']}': {len(missing)}/{len(valid)} track(s) not in Plex, downloading...")
             ensure_local_files(missing, pl["title"], music_path)
         else:
-            logging.debug(f"\U00002705 [LB] '{pl['title']}': all tracks present in Plex")
+            logging.info(f"\U00002705 [LB] '{pl['title']}': all {len(valid)} track(s) present in Plex")
 
 
 def process_one_star_deletions(plex, lb_token: str = "", lb_username: str = "") -> None:
