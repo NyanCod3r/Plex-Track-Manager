@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.3...v0.6.4) (2026-05-03)
+
+
+### Bug Fixes
+
+* fetch LB playlist metadata when checking for tracks missing from Plex ([aebc749](https://github.com/NyanCod3r/Plex-Track-Manager/commit/aebc7494f5c87df2aa9c5f85898a503f4701dade))
+
 ## [0.6.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.2...v0.6.3) (2026-05-03)
 
 
