@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.1...v0.6.2) (2026-05-03)
+
+
+### Bug Fixes
+
+* skip LB tracks with empty artist/title in missing-track check ([a8f6ef4](https://github.com/NyanCod3r/Plex-Track-Manager/commit/a8f6ef4a67f8e82802f954fa7d73c2ca488af2ad))
+
 ## [0.6.1](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.0...v0.6.1) (2026-05-03)
 
 
