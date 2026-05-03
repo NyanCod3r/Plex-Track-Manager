@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.2...v0.6.3) (2026-05-03)
+
+
+### Bug Fixes
+
+* log per-playlist result of LB missing-track check at INFO level ([e468eef](https://github.com/NyanCod3r/Plex-Track-Manager/commit/e468eef22baf8481f0e4df6623eaa18332f93201))
+
 ## [0.6.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.1...v0.6.2) (2026-05-03)
 
 
