@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.2...v0.7.3) (2026-09-10)
+
+
+### Bug Fixes
+
+* **utils:** make download duration tolerance configurable, default 300s ([e1021a7](https://github.com/NyanCod3r/Plex-Track-Manager/commit/e1021a7d70febe0d083a6c6a9bd87c107136d762))
+
 ## [0.7.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.1...v0.7.2) (2026-09-10)
 
 
