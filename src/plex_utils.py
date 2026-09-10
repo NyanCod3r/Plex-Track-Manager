@@ -6,7 +6,7 @@ Handles:
 - YouTube search and yt-dlp download with FLAC/MP3 preference
 - Track existence checks (filename + metadata matching)
 - Plex 1-star track retrieval and deletion
-- Sync statistics tracking
+- Sync statistics tracking 
 """
 
 from typing import List, Dict, Optional
