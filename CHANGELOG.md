@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.5...v0.7.0) (2026-09-10)
+
+
+### Features
+
+* **tools:** Added new tool to clean metadata ([27a231f](https://github.com/NyanCod3r/Plex-Track-Manager/commit/27a231f321841b161c33ab5b5ab7369495d41c46))
+* validate YouTube downloads and quarantine wrong videos ([f69416e](https://github.com/NyanCod3r/Plex-Track-Manager/commit/f69416edc0adac947776accf31595703240ad84a))
+
 ## [0.6.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.6.4...v0.6.5) (2026-05-03)
 
 
