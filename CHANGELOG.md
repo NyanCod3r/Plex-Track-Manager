@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.1...v0.7.2) (2026-09-10)
+
+
+### Bug Fixes
+
+* **utils:** strip disc-track number prefixes from artist names safely ([5c6fe7d](https://github.com/NyanCod3r/Plex-Track-Manager/commit/5c6fe7d07753b70a6d128bbbcb01a9376cc81e44))
+
 ## [0.7.1](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.0...v0.7.1) (2026-09-10)
 
 

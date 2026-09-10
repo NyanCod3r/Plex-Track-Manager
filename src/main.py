@@ -36,7 +36,7 @@ from listenbrainz_utils import (
     get_plex_mbid_set,
 )
 
-VERSION = "0.7.1" # x-release-please-version
+VERSION = "0.7.2" # x-release-please-version
 
 log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
