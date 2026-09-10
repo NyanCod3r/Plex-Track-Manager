@@ -97,15 +97,53 @@ def normalize_album(album: str) -> str:
 
 TRACK_PREFIX_RE = re.compile(r"^\d{1,3}-\d{1,3}\s")   # "2-07 " (disc-track)
 TRACK_ONLY_RE = re.compile(r"^\d{1,3}-(?![0-9])")     # "08-"  (single track number)
+TRACK_NUM_SPACE_RE = re.compile(r"^\d{1,3}\s+(.+)$")  # "30 "  (number + space)
+
+
+# Known artist names loaded from the library folder layout. Used to decide
+# whether a leading number is a track-number prefix or part of the artist name.
+_known_artists = set()
+_known_artists_path = None
+
+
+def _normalize_artist_name(name: str) -> str:
+    return re.sub(r"\s+", " ", str(name or "").strip().lower())
+
+
+def load_known_artists(music_path: str) -> None:
+    """Populate the known-artist set from <music_path>/<playlist>/<artist> folders."""
+    global _known_artists, _known_artists_path
+    if _known_artists_path == music_path:
+        return
+    _known_artists.clear()
+    _known_artists_path = music_path
+    if not music_path or not os.path.isdir(music_path):
+        return
+    for playlist in os.listdir(music_path):
+        pl = os.path.join(music_path, playlist)
+        if not os.path.isdir(pl):
+            continue
+        for artist in os.listdir(pl):
+            if os.path.isdir(os.path.join(pl, artist)):
+                _known_artists.add(_normalize_artist_name(artist))
 
 
 def strip_track_prefix(name: str) -> str:
-    """Strip a leading 'disc-track' / 'track-' number prefix from a name."""
+    """
+    Strip a leading track-number prefix from a name.
+
+    "disc-track" ("2-07 ") and "track-" ("08-") prefixes are stripped
+    unconditionally. A "number + space" prefix ("30 ") is stripped only when
+    the remainder is a known artist, so legit names like "50 Cent" survive.
+    """
     if not name:
         return name
     name = str(name).strip()
     name = TRACK_PREFIX_RE.sub("", name)
     name = TRACK_ONLY_RE.sub("", name)
+    m = TRACK_NUM_SPACE_RE.match(name)
+    if m and _normalize_artist_name(m.group(1)) in _known_artists:
+        name = m.group(1).strip()
     return name.strip()
 
 
@@ -209,6 +247,8 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     if not music_path:
         logging.error("\U0000274C [DOWNLOAD] MUSIC_PATH not specified.")
         return
+
+    load_known_artists(music_path)
 
     logging.debug(f"\U0001F4C2 [{playlist_name}] Checking local files for {len(tracks)} tracks...")
 

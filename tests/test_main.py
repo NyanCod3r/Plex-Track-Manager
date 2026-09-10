@@ -277,5 +277,31 @@ class TestStripTrackPrefix(unittest.TestCase):
         self.assertEqual(strip_track_prefix("10cc"), "10cc")
 
 
+class TestStripTrackPrefixHeuristic(unittest.TestCase):
+
+    def test_strips_number_space_when_known_artist(self):
+        import tempfile
+        from plex_utils import strip_track_prefix, load_known_artists
+
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "Cringe.80", "Bran Van 3000"))
+            os.makedirs(os.path.join(tmp, "Cringe.80", "Paul Hertzog"))
+            load_known_artists(tmp)
+
+            self.assertEqual(strip_track_prefix("01 Bran Van 3000"), "Bran Van 3000")
+            self.assertEqual(strip_track_prefix("30 Paul Hertzog"), "Paul Hertzog")
+            self.assertEqual(strip_track_prefix("50 Cent"), "50 Cent")
+            self.assertEqual(strip_track_prefix("8 Bit Universe"), "8 Bit Universe")
+            self.assertEqual(strip_track_prefix("10cc"), "10cc")
+            self.assertEqual(strip_track_prefix("2Pac"), "2Pac")
+            self.assertEqual(strip_track_prefix("311"), "311")
+
+    def test_dash_prefixes_stripped_without_known_artists(self):
+        from plex_utils import strip_track_prefix
+
+        self.assertEqual(strip_track_prefix("2-07 Buggles"), "Buggles")
+        self.assertEqual(strip_track_prefix("08-dan_le_sac"), "dan_le_sac")
+
+
 if __name__ == "__main__":
     unittest.main()
