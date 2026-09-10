@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.3...v0.7.4) (2026-09-10)
+
+
+### Bug Fixes
+
+* **utils:** normalize unicode punctuation and strip soundtrack disambiguation from track titles ([da01425](https://github.com/NyanCod3r/Plex-Track-Manager/commit/da01425ef094425028005fa3f373204195771097))
+
 ## [0.7.3](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.2...v0.7.3) (2026-09-10)
 
 
