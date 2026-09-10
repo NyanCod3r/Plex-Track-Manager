@@ -27,6 +27,7 @@ from plex_utils import (
     ensure_local_files,
     build_plex_track_set,
     normalize_for_matching,
+    clean_track_title,
 )
 from listenbrainz_utils import (
     sync_playlists_to_lb,
@@ -219,7 +220,8 @@ def check_lb_missing_tracks(plex_track_set: set, plex_mbid_set: set, lb_token: s
         missing = []
         for t in unresolved:
             meta = meta_map.get(t["mbid"], t)
-            artist, title = meta.get("creator", ""), meta.get("title", "")
+            artist = meta.get("creator", "")
+            title = clean_track_title(meta.get("title", ""))
             if not artist or not title:
                 logging.debug(f"[LB] '{pl['title']}': skipping track with no metadata (mbid={t['mbid']})")
                 continue

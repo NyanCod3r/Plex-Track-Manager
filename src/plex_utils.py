@@ -262,7 +262,7 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     quarantine_dir = os.environ.get("QUARANTINE_PATH", "").strip() or os.path.join(music_path, "_quarantine")
 
     for track in tracks:
-        track_name = strip_track_prefix(strip_words(track.get("title", ""))) or "Unknown Track"
+        track_name = strip_track_prefix(strip_words(clean_track_title(track.get("title", "")))) or "Unknown Track"
         artist_name = strip_track_prefix(strip_words(track.get("artist", ""))) or "Unknown Artist"
         album_name = normalize_album(strip_words(track.get("album", "")))
 
@@ -312,7 +312,7 @@ def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]
         return None
 
     safe_artist = str(artist_name).strip()
-    safe_track = str(track_name).strip()
+    safe_track = clean_track_title(str(track_name).strip())
     search_query = f"{safe_artist} - {safe_track}"
 
     if search_query in youtube_url_cache:
@@ -397,9 +397,18 @@ def normalize_for_matching(text: str) -> str:
     if not text:
         return ""
     normalized = text.lower()
+    normalized = re.sub(r"[^\w\s]", "", normalized)
     for char in '/\\-_.,:;()[]\'\"':
         normalized = normalized.replace(char, "")
     return " ".join(normalized.split())
+
+
+def clean_track_title(title: str) -> str:
+    """Strip MusicBrainz-style trailing disambiguation, e.g. '(from "Scarface" soundtrack)'."""
+    if not title:
+        return ""
+    cleaned = re.sub(r"\s*[\(\[]from\s.*?[\)\]]\s*$", "", title, flags=re.IGNORECASE).strip()
+    return cleaned or title.strip()
 
 
 def build_plex_track_set(plex) -> set:
