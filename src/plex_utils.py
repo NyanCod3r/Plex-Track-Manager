@@ -687,11 +687,31 @@ def _check_new_audio_files(folder: str, files_before: set) -> list:
     return [f for f in new_files if f.lower().endswith(".flac") or f.lower().endswith(".mp3")]
 
 
+def _smart_title(word: str) -> str:
+    """Capitalize a word, preserving all-caps acronyms (ACDC, ABBA)."""
+    if not word:
+        return word
+    if word.isupper():
+        return word
+    return word[0].upper() + word[1:].lower()
+
+
 def sanitizeFilename(name: str) -> str:
-    invalid_chars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"]
-    for char in invalid_chars:
-        name = name.replace(char, "_")
-    return name.strip()
+    """Filesystem-safe name matching sanitize_tracks.py (AC/DC -> ACDC, rain_dead -> Rain Dead)."""
+    if not name:
+        return ""
+    name = str(name).strip()
+    name = name.replace("_", " ")
+    name = name.replace("&", "and")
+    name = name.replace("@", "at")
+    name = name.replace("#", "number")
+    name = name.replace("%", "percent")
+    name = name.replace("!", "")
+    name = name.replace("/", "").replace("\\", "")
+    for char in '<>:"|?*':
+        name = name.replace(char, "")
+    words = re.split(r"\s+", name)
+    return " ".join(_smart_title(w) for w in words if w)
 
 
 def get_one_star_tracks(plex: PlexServer, library_name: str) -> List[Dict]:

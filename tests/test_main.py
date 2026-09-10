@@ -103,8 +103,8 @@ class TestSanitizeFilename(unittest.TestCase):
     def test_removes_special_characters(self):
         from plex_utils import sanitizeFilename
 
-        self.assertEqual(sanitizeFilename('AC/DC'), "AC_DC")
-        self.assertEqual(sanitizeFilename('Track: "Live"'), "Track_ _Live_")
+        self.assertEqual(sanitizeFilename('AC/DC'), "ACDC")
+        self.assertEqual(sanitizeFilename('Track: "Live"'), "Track Live")
 
     def test_empty_input(self):
         from plex_utils import sanitizeFilename
