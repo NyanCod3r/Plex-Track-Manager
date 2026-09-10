@@ -260,5 +260,22 @@ class TestDownloadValidation(unittest.TestCase):
             self.assertFalse(os.path.exists(f))
 
 
+class TestStripTrackPrefix(unittest.TestCase):
+
+    def test_strips_disc_track_prefix(self):
+        from plex_utils import strip_track_prefix
+
+        self.assertEqual(strip_track_prefix("2-07 Buggles"), "Buggles")
+        self.assertEqual(strip_track_prefix("1-10 Lina Santiago"), "Lina Santiago")
+        self.assertEqual(strip_track_prefix("08-dan_le_sac"), "dan_le_sac")
+
+    def test_preserves_plain_artists(self):
+        from plex_utils import strip_track_prefix
+
+        self.assertEqual(strip_track_prefix("Buggles"), "Buggles")
+        self.assertEqual(strip_track_prefix("50 Cent"), "50 Cent")
+        self.assertEqual(strip_track_prefix("10cc"), "10cc")
+
+
 if __name__ == "__main__":
     unittest.main()

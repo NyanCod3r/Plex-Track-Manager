@@ -95,6 +95,20 @@ def normalize_album(album: str) -> str:
     return str(album).strip()
 
 
+TRACK_PREFIX_RE = re.compile(r"^\d{1,3}-\d{1,3}\s")   # "2-07 " (disc-track)
+TRACK_ONLY_RE = re.compile(r"^\d{1,3}-(?![0-9])")     # "08-"  (single track number)
+
+
+def strip_track_prefix(name: str) -> str:
+    """Strip a leading 'disc-track' / 'track-' number prefix from a name."""
+    if not name:
+        return name
+    name = str(name).strip()
+    name = TRACK_PREFIX_RE.sub("", name)
+    name = TRACK_ONLY_RE.sub("", name)
+    return name.strip()
+
+
 _COMMON_WORDS = {
     "the", "a", "an", "and", "of", "in", "on", "at", "to", "for",
     "is", "are", "it", "with", "feat", "ft", "vs",
@@ -204,8 +218,8 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     quarantine_dir = os.environ.get("QUARANTINE_PATH", "").strip() or os.path.join(music_path, "_quarantine")
 
     for track in tracks:
-        track_name = strip_words(track.get("title", "")) or "Unknown Track"
-        artist_name = strip_words(track.get("artist", "")) or "Unknown Artist"
+        track_name = strip_track_prefix(strip_words(track.get("title", ""))) or "Unknown Track"
+        artist_name = strip_track_prefix(strip_words(track.get("artist", ""))) or "Unknown Artist"
         album_name = normalize_album(strip_words(track.get("album", "")))
 
         safe_artist = sanitizeFilename(artist_name)
@@ -464,8 +478,8 @@ def write_audio_metadata(filepath: str, artist: str, title: str, album: str = ""
     """
     if not artist and not title:
         return False
-    artist = strip_words(artist)
-    title = strip_words(title)
+    artist = strip_track_prefix(strip_words(artist))
+    title = strip_track_prefix(strip_words(title))
     album = normalize_album(strip_words(album))
     try:
         audio = mutagen.File(filepath, easy=True)
