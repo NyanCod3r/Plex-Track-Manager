@@ -17,8 +17,11 @@ from youtubesearchpython import VideosSearch
 import warnings
 warnings.filterwarnings("ignore", module="eyed3.id3.frames")
 
+import difflib
 import logging
 import os
+import re
+import shutil
 import subprocess
 import sys
 import time
@@ -26,6 +29,161 @@ import mutagen
 
 SUPPORTED_FORMATS = [".flac", ".mp3"]
 youtube_url_cache = {}
+
+
+# Words/phrases that yt-dlp's --embed-metadata injects from YouTube titles and
+# uploader names (e.g. "Official Video", "VEVO", "RHINO"). These are stripped
+# from title/artist/album before tagging.
+STRIP_WORDS = [
+    "official music video",
+    "official lyric video",
+    "official audio video",
+    "official hd video",
+    "official teaser video",
+    "official trailer video",
+    "official video",
+    "official audio",
+    "lyric video",
+    "music video",
+    "vevo",
+    "rhino",
+]
+
+# Album placeholders that mean "no real album". These are written as "Single"
+# (so the folder becomes Artist/Single/...).
+SINGLE_ALIASES = {
+    "standalone recordings",
+    "standalone recording",
+    "non-album tracks",
+    "non-album track",
+    "unknown album",
+    "unknownalbum",
+}
+
+# YouTube-specific tags (video description / URL) that are cleared after download.
+YOUTUBE_JUNK_TAGS = ("comment", "description", "synopsis", "purl")
+
+# Minimum title-match score (0..1) required to accept a YouTube search result.
+YOUTUBE_MIN_SCORE = 0.7
+
+# Allowed difference (seconds) between expected and actual audio duration before
+# a download is considered the wrong video.
+DURATION_TOLERANCE = 25.0
+
+
+def strip_words(text: str) -> str:
+    """Remove YouTube junk words/phrases from a name and clean up leftovers."""
+    if not text:
+        return text
+    text = str(text)
+    for word in sorted(STRIP_WORDS, key=len, reverse=True):
+        text = re.sub(re.escape(word), "", text, flags=re.IGNORECASE)
+    text = re.sub(r"[\(\[]\s*[\)\]]", "", text)
+    text = re.sub(r"\s*-\s*$", "", text)
+    text = re.sub(r"^\s*-\s*", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def normalize_album(album: str) -> str:
+    """Return 'Single' when the album is missing or a known placeholder."""
+    if not album:
+        return "Single"
+    key = str(album).strip().strip("[]").strip().lower()
+    if key in SINGLE_ALIASES:
+        return "Single"
+    return str(album).strip()
+
+
+_COMMON_WORDS = {
+    "the", "a", "an", "and", "of", "in", "on", "at", "to", "for",
+    "is", "are", "it", "with", "feat", "ft", "vs",
+}
+
+
+def _significant_words(text: str) -> set:
+    """Lowercase word tokens after stripping junk, minus common filler words."""
+    words = set(re.findall(r"[a-z0-9]+", strip_words(text or "").lower()))
+    return words - _COMMON_WORDS
+
+
+def _metadata_mismatch(old_artist: str, old_title: str, new_artist: str, new_title: str) -> bool:
+    """
+    True when the embedded artist/title share no meaningful words with the
+    requested track - a strong signal that the wrong video was downloaded.
+    """
+    old_a = _significant_words(old_artist)
+    old_t = _significant_words(old_title)
+    new_a = _significant_words(new_artist)
+    new_t = _significant_words(new_title)
+    if not old_a and not old_t:
+        return False  # nothing embedded to compare against
+    return not (old_a & new_a) and not (old_t & new_t)
+
+
+def _youtube_title_score(title: str, artist_name: str, track_name: str) -> float:
+    """Score (0..1) how well a YouTube title matches the requested artist/track."""
+    t = normalize_for_matching(title)
+    a = normalize_for_matching(artist_name)
+    tr = normalize_for_matching(track_name)
+    if not tr:
+        return 0.0
+    score = 0.7 if (tr and tr in t) else 0.35 * difflib.SequenceMatcher(None, tr, t).ratio()
+    if a:
+        score += 0.3 if a in t else 0.15 * difflib.SequenceMatcher(None, a, t).ratio()
+    return score
+
+
+def _audio_duration(filepath: str):
+    try:
+        info = mutagen.File(filepath).info
+        return getattr(info, "length", None)
+    except Exception:
+        return None
+
+
+def _read_embedded_artist_title(filepath: str):
+    try:
+        audio = mutagen.File(filepath, easy=True)
+        if audio is None:
+            return "", ""
+        return (audio.get("artist") or [""])[0], (audio.get("title") or [""])[0]
+    except Exception:
+        return "", ""
+
+
+def _download_is_valid(filepath: str, artist_name: str, track_name: str, expected_duration) -> tuple:
+    """
+    Return (ok, reason). ok=False means the downloaded file looks like the
+    wrong video/audio and should be quarantined instead of tagged.
+    """
+    if expected_duration:
+        actual = _audio_duration(filepath)
+        if actual is not None and abs(actual - expected_duration) > DURATION_TOLERANCE:
+            return False, f"duration mismatch (expected ~{expected_duration:.0f}s, got ~{actual:.0f}s)"
+    emb_artist, emb_title = _read_embedded_artist_title(filepath)
+    if _metadata_mismatch(emb_artist, emb_title, artist_name, track_name):
+        return False, f"metadata mismatch (got '{emb_artist} - {emb_title}')"
+    return True, ""
+
+
+def _quarantine_file(filepath: str, quarantine_dir: str, reason: str) -> str:
+    """Move a mismatched download into the quarantine folder. Returns new path or None."""
+    try:
+        os.makedirs(quarantine_dir, exist_ok=True)
+        dest = os.path.join(quarantine_dir, os.path.basename(filepath))
+        if os.path.exists(dest):
+            base, ext = os.path.splitext(dest)
+            i = 1
+            while os.path.exists(f"{base} ({i}){ext}"):
+                i += 1
+            dest = f"{base} ({i}){ext}"
+        shutil.move(filepath, dest)
+        logging.warning(f"\U0001F6AB [DOWNLOAD] Quarantined '{os.path.basename(filepath)}' ({reason}) -> {dest}")
+        return dest
+    except Exception as exc:
+        logging.error(f"\U0000274C [DOWNLOAD] Failed to quarantine '{filepath}': {exc}")
+        return None
 
 
 def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
@@ -43,11 +201,12 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     download_queue = []
     safe_playlist = sanitizeFilename(playlist_name)
     playlist_folder = os.path.join(music_path, safe_playlist)
+    quarantine_dir = os.environ.get("QUARANTINE_PATH", "").strip() or os.path.join(music_path, "_quarantine")
 
     for track in tracks:
-        track_name = track.get("title", "Unknown Track")
-        artist_name = track.get("artist", "Unknown Artist")
-        album_name = track.get("album", "Unknown Album")
+        track_name = strip_words(track.get("title", "")) or "Unknown Track"
+        artist_name = strip_words(track.get("artist", "")) or "Unknown Artist"
+        album_name = normalize_album(strip_words(track.get("album", "")))
 
         safe_artist = sanitizeFilename(artist_name)
         safe_album = sanitizeFilename(album_name)
@@ -70,13 +229,14 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
             continue
 
         logging.debug(f"\U00002B07\uFE0F  [{playlist_name}] Missing track, queued for download: '{safe_artist} - {safe_track}'")
-        download_queue.append((album_folder, track_name, artist_name, expected_filepath))
+        duration = track.get("duration")
+        download_queue.append((album_folder, track_name, artist_name, album_name, expected_filepath, duration))
 
     if download_queue:
         logging.info(f"\U0001F4E5 [{playlist_name}] Downloading {len(download_queue)} missing tracks...")
         download_delay = float(os.environ.get("DOWNLOAD_DELAY", "") or "0.1")
-        for idx, (output_folder, track_name, artist_name, expected_filepath) in enumerate(download_queue, 1):
-            download_track(output_folder, track_name, artist_name, expected_filepath, playlist_name)
+        for idx, (output_folder, track_name, artist_name, album_name, expected_filepath, duration) in enumerate(download_queue, 1):
+            download_track(output_folder, track_name, artist_name, expected_filepath, playlist_name, album_name, duration, quarantine_dir)
             if idx < len(download_queue):
                 time.sleep(download_delay)
         logging.debug(f"\U00002705 [{playlist_name}] Download batch complete ({len(download_queue)} tracks processed)")
@@ -106,33 +266,54 @@ def search_youtube_for_track(artist_name: str, track_name: str) -> Optional[str]
     logging.debug(f"\U0001F50D [YOUTUBE] Searching for '{search_query}'...")
 
     try:
-        search_cmd = [sys.executable, "-m", "yt_dlp", "--get-id", "--no-playlist", f"ytsearch5:{search_query}"]
+        search_cmd = [
+            sys.executable, "-m", "yt_dlp",
+            "--no-playlist",
+            "--print", "%(id)s\t%(title)s",
+            f"ytsearch8:{search_query}",
+        ]
         proc = subprocess.run(search_cmd, capture_output=True, text=True, timeout=30)
 
         if proc.returncode == 0 and proc.stdout.strip():
-            video_ids = proc.stdout.strip().split("\n")
-            if video_ids and video_ids[0]:
-                url = f"https://www.youtube.com/watch?v={video_ids[0]}"
-                logging.debug(f"\U00002705 [YOUTUBE] Found via yt-dlp: {url}")
-                youtube_url_cache[search_query] = url
-                return url
+            candidates = []
+            for line in proc.stdout.strip().split("\n"):
+                if "\t" in line:
+                    vid, title = line.split("\t", 1)
+                    vid, title = vid.strip(), title.strip()
+                    if vid and title:
+                        candidates.append((vid, title))
+            if candidates:
+                best_id, best_title, best_score = None, None, 0.0
+                for vid, title in candidates:
+                    score = _youtube_title_score(title, safe_artist, safe_track)
+                    if score > best_score:
+                        best_id, best_title, best_score = vid, title, score
+                if best_id and best_score >= YOUTUBE_MIN_SCORE:
+                    url = f"https://www.youtube.com/watch?v={best_id}"
+                    logging.debug(f"\U00002705 [YOUTUBE] Found via yt-dlp: {url} ('{best_title}', score={best_score:.2f})")
+                    youtube_url_cache[search_query] = url
+                    return url
+                logging.debug(f"\u26A0\uFE0F  [YOUTUBE] yt-dlp results failed title match for '{search_query}' (best score {best_score:.2f})")
 
-        logging.debug("\U0001F504 [YOUTUBE] yt-dlp search failed, trying YoutubeSearchPython...")
+        logging.debug("\U0001F504 [YOUTUBE] Trying YoutubeSearchPython fallback...")
         videos_search = VideosSearch(safe_artist + " " + safe_track, limit=5)
         search_result = videos_search.result()
-        if not search_result or not isinstance(search_result, dict):
-            youtube_url_cache[search_query] = None
-            return None
+        if search_result and isinstance(search_result, dict):
+            results = search_result.get("result", [])
+            best_url, best_title, best_score = None, None, 0.0
+            for video in results:
+                if not (video and isinstance(video, dict) and video.get("link")):
+                    continue
+                title = video.get("title", "") or ""
+                score = _youtube_title_score(title, safe_artist, safe_track)
+                if score > best_score:
+                    best_url, best_title, best_score = video["link"], title, score
+            if best_url and best_score >= YOUTUBE_MIN_SCORE:
+                logging.debug(f"\U00002705 [YOUTUBE] Found via YoutubeSearchPython: {best_url} ('{best_title}', score={best_score:.2f})")
+                youtube_url_cache[search_query] = best_url
+                return best_url
 
-        results = search_result.get("result", [])
-        for video in results:
-            if video and isinstance(video, dict) and video.get("link"):
-                url = video["link"]
-                logging.debug(f"\U00002705 [YOUTUBE] Found via YoutubeSearchPython: {url}")
-                youtube_url_cache[search_query] = url
-                return url
-
-        logging.warning(f"\U0000274C [YOUTUBE] No results found for '{search_query}'")
+        logging.warning(f"\U0000274C [YOUTUBE] No good match for '{search_query}'")
         youtube_url_cache[search_query] = None
         return None
 
@@ -270,14 +451,58 @@ def find_and_rename_track_by_tag(folder: str, artist_name: str, track_title: str
     return False
 
 
-def download_track(output_folder: str, track_name: str, artist_name: str, expected_filepath: str, playlist_name: str = "Unknown"):
+def write_audio_metadata(filepath: str, artist: str, title: str, album: str = "") -> bool:
+    """
+    Overwrite the embedded tags of a downloaded audio file with clean,
+    source-of-truth metadata so Plex does not pick up YouTube junk such as
+    "Official Video", "VEVO" or "RHINO".
+
+    - Strips YouTube junk words from artist/title/album.
+    - Maps missing/placeholder albums ("Unknown Album", "[standalone
+      recordings]", ...) to "Single".
+    - Clears YouTube-specific tags (synopsis, purl, comment, description).
+    """
+    if not artist and not title:
+        return False
+    artist = strip_words(artist)
+    title = strip_words(title)
+    album = normalize_album(strip_words(album))
+    try:
+        audio = mutagen.File(filepath, easy=True)
+        if audio is None:
+            logging.warning(f"\u26A0\uFE0F  [METADATA] Unsupported file for tagging: '{filepath}'")
+            return False
+        audio["title"] = title
+        audio["artist"] = artist
+        audio["albumartist"] = artist
+        audio["album"] = album
+        for key in YOUTUBE_JUNK_TAGS:
+            try:
+                audio.pop(key, None)
+            except Exception:
+                pass
+        audio.save()
+        logging.debug(f"\U0001F3F7\uFE0F  [METADATA] Tagged '{os.path.basename(filepath)}': {artist} - {title}")
+        return True
+    except Exception as exc:
+        logging.warning(f"\u26A0\uFE0F  [METADATA] Failed to tag '{filepath}': {exc}")
+        return False
+
+
+def download_track(output_folder: str, track_name: str, artist_name: str, expected_filepath: str, playlist_name: str = "Unknown", album_name: str = "", expected_duration=None, quarantine_dir: str = None):
     """
     Download a single track using YouTube search + yt-dlp.
     Format is determined by PREFER_FLAC (default: true).
+
+    Validates the download (title match at search time, plus duration and
+    embedded-metadata checks after download) and quarantines wrong videos.
     """
     download_stats["downloads_attempted"] += 1
     ytdlp_log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
     prefer_flac = os.environ.get("PREFER_FLAC", "true").lower() in ["true", "1", "yes"]
+
+    if not quarantine_dir:
+        quarantine_dir = os.path.join(output_folder, "_quarantine")
 
     files_before = set()
     if os.path.exists(output_folder):
@@ -313,6 +538,13 @@ def download_track(output_folder: str, track_name: str, artist_name: str, expect
             new_audio = _check_new_audio_files(output_folder, files_before)
             if new_audio:
                 for f in new_audio:
+                    filepath = os.path.join(output_folder, f)
+                    ok, reason = _download_is_valid(filepath, artist_name, track_name, expected_duration)
+                    if not ok:
+                        _quarantine_file(filepath, quarantine_dir, reason)
+                        track_download_failure(playlist_name, artist_name, track_name)
+                        return False
+                    write_audio_metadata(filepath, artist_name, track_name, album_name)
                     logging.debug(f"\U00002705 [{playlist_name}] Downloaded: {f}")
                 track_download_success(playlist_name, artist_name, track_name)
                 return True
@@ -329,6 +561,13 @@ def download_track(output_folder: str, track_name: str, artist_name: str, expect
                 new_audio = _check_new_audio_files(output_folder, files_before)
                 if new_audio:
                     for f in new_audio:
+                        filepath = os.path.join(output_folder, f)
+                        ok, reason = _download_is_valid(filepath, artist_name, track_name, expected_duration)
+                        if not ok:
+                            _quarantine_file(filepath, quarantine_dir, reason)
+                            track_download_failure(playlist_name, artist_name, track_name)
+                            return False
+                        write_audio_metadata(filepath, artist_name, track_name, album_name)
                         logging.debug(f"\U00002705 [{playlist_name}] Downloaded (MP3 fallback): {f}")
                     track_download_success(playlist_name, artist_name, track_name)
                     return True

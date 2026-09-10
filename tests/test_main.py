@@ -112,5 +112,153 @@ class TestSanitizeFilename(unittest.TestCase):
         self.assertEqual(sanitizeFilename(""), "")
 
 
+class TestWriteAudioMetadata(unittest.TestCase):
+
+    class _FakeAudio(dict):
+        def __init__(self):
+            super().__init__()
+            self.saved = False
+
+        def save(self):
+            self.saved = True
+
+    @patch("plex_utils.mutagen.File")
+    def test_writes_source_metadata(self, mock_mutagen_file):
+        from plex_utils import write_audio_metadata
+
+        fake_audio = self._FakeAudio()
+        mock_mutagen_file.return_value = fake_audio
+
+        result = write_audio_metadata("/tmp/Artist - Track.flac", "Artist", "Track", "Album")
+
+        self.assertTrue(result)
+        mock_mutagen_file.assert_called_once_with("/tmp/Artist - Track.flac", easy=True)
+        self.assertEqual(fake_audio["title"], "Track")
+        self.assertEqual(fake_audio["artist"], "Artist")
+        self.assertEqual(fake_audio["albumartist"], "Artist")
+        self.assertEqual(fake_audio["album"], "Album")
+        self.assertTrue(fake_audio.saved)
+
+    @patch("plex_utils.mutagen.File", return_value=None)
+    def test_unsupported_file_returns_false(self, mock_mutagen_file):
+        from plex_utils import write_audio_metadata
+
+        result = write_audio_metadata("/tmp/x.bin", "Artist", "Track", "")
+
+        self.assertFalse(result)
+
+    def test_empty_metadata_returns_false(self):
+        from plex_utils import write_audio_metadata
+
+        result = write_audio_metadata("/tmp/x.flac", "", "", "")
+
+        self.assertFalse(result)
+
+    @patch("plex_utils.mutagen.File")
+    def test_normalizes_single_album_and_clears_junk_tags(self, mock_mutagen_file):
+        from plex_utils import write_audio_metadata
+
+        fake_audio = self._FakeAudio()
+        fake_audio["synopsis"] = ["Official HD Video ..."]
+        fake_audio["purl"] = ["https://www.youtube.com/watch?v=x"]
+        mock_mutagen_file.return_value = fake_audio
+
+        result = write_audio_metadata("/tmp/x.flac", "Artist", "Track", "Unknown Album")
+
+        self.assertTrue(result)
+        self.assertEqual(fake_audio["album"], "Single")
+        self.assertNotIn("synopsis", fake_audio)
+        self.assertNotIn("purl", fake_audio)
+        self.assertTrue(fake_audio.saved)
+
+
+class TestStripWords(unittest.TestCase):
+
+    def test_strips_junk_words(self):
+        from plex_utils import strip_words
+
+        self.assertEqual(
+            strip_words("The Buggles - Video Killed The Radio Star (Official Music Video)"),
+            "The Buggles - Video Killed The Radio Star",
+        )
+        self.assertEqual(
+            strip_words("Bonnie Tyler - Holding Out for a Hero (Official HD Video)"),
+            "Bonnie Tyler - Holding Out for a Hero",
+        )
+
+    def test_preserves_clean_text(self):
+        from plex_utils import strip_words
+
+        self.assertEqual(strip_words("Holding Out for a Hero"), "Holding Out for a Hero")
+
+
+class TestNormalizeAlbum(unittest.TestCase):
+
+    def test_maps_missing_and_placeholders_to_single(self):
+        from plex_utils import normalize_album
+
+        self.assertEqual(normalize_album(""), "Single")
+        self.assertEqual(normalize_album("Unknown Album"), "Single")
+        self.assertEqual(normalize_album("UnknownAlbum"), "Single")
+        self.assertEqual(normalize_album("[standalone recordings]"), "Single")
+
+    def test_keeps_real_album(self):
+        from plex_utils import normalize_album
+
+        self.assertEqual(normalize_album("The Age of Plastic"), "The Age of Plastic")
+
+
+class TestDownloadValidation(unittest.TestCase):
+
+    def test_youtube_title_score_prefers_matching_title(self):
+        from plex_utils import _youtube_title_score
+
+        good = _youtube_title_score("Faces - Statement (Official Video)", "Faces", "Statement")
+        bad = _youtube_title_score("Sibiya faces questions about bank transactions", "Faces", "Statement")
+        self.assertGreater(good, bad)
+        self.assertGreaterEqual(good, 0.7)
+
+    def test_metadata_mismatch_detects_wrong_video(self):
+        from plex_utils import _metadata_mismatch
+
+        self.assertTrue(_metadata_mismatch(
+            "Newzroom Afrika", "Sibiya faces questions about bank transactions", "Faces", "Statement"))
+        self.assertFalse(_metadata_mismatch(
+            "FosterThePeople", "Foster The People - Pumped Up Kicks (Official Video)", "Foster The People", "Pumped Up Kicks"))
+        self.assertFalse(_metadata_mismatch("", "", "Faces", "Statement"))
+
+    @patch("plex_utils._read_embedded_artist_title", return_value=("Newzroom Afrika", "Sibiya faces questions about bank transactions"))
+    def test_download_invalid_on_metadata_mismatch(self, _mock_read):
+        from plex_utils import _download_is_valid
+
+        ok, reason = _download_is_valid("/tmp/x.flac", "Faces", "Statement", None)
+        self.assertFalse(ok)
+        self.assertIn("metadata mismatch", reason)
+
+    @patch("plex_utils._audio_duration", return_value=120.0)
+    def test_download_invalid_on_duration_mismatch(self, _mock_dur):
+        from plex_utils import _download_is_valid
+
+        ok, reason = _download_is_valid("/tmp/x.flac", "Faces", "Statement", 240.0)
+        self.assertFalse(ok)
+        self.assertIn("duration mismatch", reason)
+
+    def test_quarantine_file_moves_file(self):
+        import tempfile
+        from plex_utils import _quarantine_file
+
+        with tempfile.TemporaryDirectory() as tmp:
+            src_dir = os.path.join(tmp, "album")
+            q_dir = os.path.join(tmp, "_quarantine")
+            os.makedirs(src_dir)
+            f = os.path.join(src_dir, "x.flac")
+            with open(f, "w") as fh:
+                fh.write("x")
+            dest = _quarantine_file(f, q_dir, "test")
+            self.assertIsNotNone(dest)
+            self.assertTrue(os.path.exists(dest))
+            self.assertFalse(os.path.exists(f))
+
+
 if __name__ == "__main__":
     unittest.main()

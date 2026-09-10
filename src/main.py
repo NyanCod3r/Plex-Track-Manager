@@ -226,7 +226,8 @@ def check_lb_missing_tracks(plex_track_set: set, plex_mbid_set: set, lb_token: s
             norm_key = (normalize_for_matching(artist), normalize_for_matching(title))
             if norm_key in plex_track_set:
                 continue  # found via text match
-            missing.append({"title": title, "artist": artist})
+            album = meta.get("album", "")
+            missing.append({"title": title, "artist": artist, "album": album, "duration": meta.get("duration")})
 
         if missing:
             logging.info(f"\U0001F4E5 [LB] '{pl['title']}': {len(missing)}/{len(tracks)} track(s) not in Plex, downloading...")
