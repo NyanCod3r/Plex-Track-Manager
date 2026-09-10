@@ -67,8 +67,12 @@ YOUTUBE_JUNK_TAGS = ("comment", "description", "synopsis", "purl")
 YOUTUBE_MIN_SCORE = 0.7
 
 # Allowed difference (seconds) between expected and actual audio duration before
-# a download is considered the wrong video.
-DURATION_TOLERANCE = 25.0
+# a download is considered the wrong video. Configurable via DURATION_TOLERANCE
+# (default 300s, to allow radio-edit vs album-version length differences).
+try:
+    DURATION_TOLERANCE = float(os.environ.get("DURATION_TOLERANCE", "300"))
+except ValueError:
+    DURATION_TOLERANCE = 300.0
 
 
 def strip_words(text: str) -> str:

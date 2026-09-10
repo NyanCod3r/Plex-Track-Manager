@@ -239,9 +239,17 @@ class TestDownloadValidation(unittest.TestCase):
     def test_download_invalid_on_duration_mismatch(self, _mock_dur):
         from plex_utils import _download_is_valid
 
-        ok, reason = _download_is_valid("/tmp/x.flac", "Faces", "Statement", 240.0)
+        ok, reason = _download_is_valid("/tmp/x.flac", "Faces", "Statement", 600.0)
         self.assertFalse(ok)
         self.assertIn("duration mismatch", reason)
+
+    @patch("plex_utils._audio_duration", return_value=280.0)
+    @patch("plex_utils._read_embedded_artist_title", return_value=("Faces", "Statement"))
+    def test_download_valid_within_duration_tolerance(self, _mock_read, _mock_dur):
+        from plex_utils import _download_is_valid
+
+        ok, _ = _download_is_valid("/tmp/x.flac", "Faces", "Statement", 300.0)
+        self.assertTrue(ok)
 
     def test_quarantine_file_moves_file(self):
         import tempfile
