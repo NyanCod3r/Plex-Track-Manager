@@ -29,6 +29,7 @@ Plex-Track-Manager syncs your Plex listening habits to Last.fm, generates **Disc
 - **1-Star rating cleanup** - Delete unwanted tracks from Plex, disk, and all ListenBrainz playlists
 - **Continuous sync** - Runs in a loop with configurable wait time
 - **Docker support** - Ready-to-use container
+- **Tools** - Metadata management is hard, you can clean up the mess with a simple script in tools/scripts
 
 ---
 
