@@ -311,5 +311,22 @@ class TestStripTrackPrefixHeuristic(unittest.TestCase):
         self.assertEqual(strip_track_prefix("08-dan_le_sac"), "dan_le_sac")
 
 
+class TestSanitizeFolderName(unittest.TestCase):
+
+    def test_preserves_case_and_dots(self):
+        from plex_utils import sanitizeFolderName
+
+        self.assertEqual(sanitizeFolderName("Punk.Pool.Party"), "Punk.Pool.Party")
+        self.assertEqual(sanitizeFolderName("Cringe.80"), "Cringe.80")
+        self.assertEqual(sanitizeFolderName("Release Radar"), "Release Radar")
+        self.assertEqual(sanitizeFolderName("Discover Weekly"), "Discover Weekly")
+
+    def test_strips_invalid_characters(self):
+        from plex_utils import sanitizeFolderName
+
+        self.assertEqual(sanitizeFolderName("Bad:Name"), "BadName")
+        self.assertEqual(sanitizeFolderName("a/b\\c"), "abc")
+
+
 if __name__ == "__main__":
     unittest.main()

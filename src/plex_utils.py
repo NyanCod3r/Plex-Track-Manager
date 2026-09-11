@@ -47,6 +47,14 @@ STRIP_WORDS = [
     "music video",
     "vevo",
     "rhino",
+    "deluxe",
+    "remastered",
+    "bonus track",
+    "bonus tracks",
+    "deluxe edition",
+    "remastered edition",
+    "original",
+    "original edition",
 ]
 
 # Album placeholders that mean "no real album". These are written as "Single"
@@ -242,6 +250,21 @@ def _quarantine_file(filepath: str, quarantine_dir: str, reason: str) -> str:
         return None
 
 
+def sanitizeFolderName(name: str) -> str:
+    """Filesystem-safe folder name that preserves original case and dots.
+
+    Playlist names are user-defined (e.g. 'Punk.Pool.Party', 'Cringe.80') and
+    must NOT be title-cased, unlike artist/title/album metadata. Only strip the
+    characters that are invalid in filenames.
+    """
+    if not name:
+        return ""
+    name = str(name).strip()
+    for char in '<>:"/\\|?*':
+        name = name.replace(char, "")
+    return name
+
+
 def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     """
     Ensure all tracks in the list are downloaded locally.
@@ -257,7 +280,7 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     logging.debug(f"\U0001F4C2 [{playlist_name}] Checking local files for {len(tracks)} tracks...")
 
     download_queue = []
-    safe_playlist = sanitizeFilename(playlist_name)
+    safe_playlist = sanitizeFolderName(playlist_name)
     playlist_folder = os.path.join(music_path, safe_playlist)
     quarantine_dir = os.environ.get("QUARANTINE_PATH", "").strip() or os.path.join(music_path, "_quarantine")
 
