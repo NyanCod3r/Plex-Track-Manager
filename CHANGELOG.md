@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.4...v0.7.5) (2026-09-11)
+
+
+### Bug Fixes
+
+* **utils:** preserve playlist folder casing and unify naming with sanitize_tracks ([a4964d4](https://github.com/NyanCod3r/Plex-Track-Manager/commit/a4964d4cb1a83ba7ef509df115742dbc1848df3b))
+* **utils:** preserve playlist folder casing and unify naming with sanitize_tracks ([13f79b5](https://github.com/NyanCod3r/Plex-Track-Manager/commit/13f79b51a281b938d3ffc076c665d978ba1823f3))
+
 ## [0.7.4](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.3...v0.7.4) (2026-09-10)
 
 
