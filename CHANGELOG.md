@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.6](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.5...v0.7.6) (2026-09-12)
+
+
+### Bug Fixes
+
+* **utils:** unify folder/filename naming with sanitize_tracks and fix banner escaping ([6246a4f](https://github.com/NyanCod3r/Plex-Track-Manager/commit/6246a4ff5e953343c39923854598571470e5a556))
+
 ## [0.7.5](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.4...v0.7.5) (2026-09-11)
 
 
