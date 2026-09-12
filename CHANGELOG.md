@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.7](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.6...v0.7.7) (2026-09-12)
+
+
+### Bug Fixes
+
+* **perf:** filter loved tracks server-side and reduce MusicBrainz retry backoff ([0b22362](https://github.com/NyanCod3r/Plex-Track-Manager/commit/0b223620657b03884d5258f015699cf084009fd7))
+
 ## [0.7.6](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.5...v0.7.6) (2026-09-12)
 
 
