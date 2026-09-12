@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.8](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.7...v0.7.8) (2026-09-12)
+
+
+### Bug Fixes
+
+* **utils:** preserve playlist casing, skip quarantined tracks, tame MB retry backoff ([7ca2c7e](https://github.com/NyanCod3r/Plex-Track-Manager/commit/7ca2c7e4b10d95fab2546b4791be9e992c0b0fa4))
+
 ## [0.7.7](https://github.com/NyanCod3r/Plex-Track-Manager/compare/v0.7.6...v0.7.7) (2026-09-12)
 
 
