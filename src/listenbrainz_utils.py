@@ -31,9 +31,9 @@ def _make_session() -> requests.Session:
     """Create a requests.Session with retry-on-connection-reset behaviour."""
     session = requests.Session()
     retry = Retry(
-        total=5,
+        total=2,
         backoff_factor=2,
-        status_forcelist=[429, 500, 502, 503, 504],
+        status_forcelist=[500, 502, 504],
         allowed_methods=["GET", "POST"],
         raise_on_status=False,
         respect_retry_after_header=True,

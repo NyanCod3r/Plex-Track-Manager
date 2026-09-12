@@ -121,11 +121,12 @@ def sync_plex_to_lastfm(plex, network):
     loved_count = 0
     for section in music_sections:
         try:
-            tracks = section.searchTracks()
+            tracks = section.searchTracks(filters={"userRating>>=": 8})
             for track in tracks:
                 if not (hasattr(track, "userRating") and track.userRating and track.userRating >= 8.0):
                     continue
-                artist_title = track.artist().title if track.artist() else "Unknown"
+                artist = track.artist()
+                artist_title = artist.title if artist else "Unknown"
                 track_hash = f"{artist_title}:{track.title}".lower()
                 if track_hash in loved_hashes:
                     continue
