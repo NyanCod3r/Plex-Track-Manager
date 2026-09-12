@@ -265,6 +265,18 @@ def sanitizeFolderName(name: str) -> str:
     return name
 
 
+def _is_quarantined(quarantine_dir: str, safe_artist: str, safe_track: str) -> bool:
+    """Return True if a previously-quarantined copy of this track already exists."""
+    if not quarantine_dir or not os.path.isdir(quarantine_dir):
+        return False
+    prefix = f"{safe_artist} - {safe_track}"
+    for fn in os.listdir(quarantine_dir):
+        stem = os.path.splitext(fn)[0]
+        if stem == prefix or stem.startswith(prefix + " ("):
+            return True
+    return False
+
+
 def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
     """
     Ensure all tracks in the list are downloaded locally.
@@ -300,6 +312,10 @@ def ensure_local_files(tracks: list, playlist_name: str, music_path: str):
         file_ext = "flac" if prefer_flac else "mp3"
         expected_filename = f"{safe_artist} - {safe_track}.{file_ext}"
         expected_filepath = os.path.join(album_folder, expected_filename)
+
+        if _is_quarantined(quarantine_dir, safe_artist, safe_track):
+            logging.debug(f"[{playlist_name}] Skipping previously-quarantined: '{safe_artist} - {safe_track}'")
+            continue
 
         if track_exists_in_directory(album_folder, safe_track):
             logging.debug(f"\U00002705 [{playlist_name}] Already exists: '{safe_artist} - {safe_track}'")
